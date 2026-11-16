@@ -241,7 +241,10 @@ class const CreateGameWidget({
           ),
         ],
         FilledButton(
-          onPressed: connectionStatus == LichessConnectionStatus.online
+          // A time control saved before Bullet and Blitz lobby games were removed can't be used.
+          onPressed:
+              connectionStatus == LichessConnectionStatus.online &&
+                  playPrefs.timeIncrement.isAllowedForLobbySeek
               ? () {
                   // Pops the play bottom sheet
                   Navigator.of(context).popUntil((route) => route is! PopupRoute);

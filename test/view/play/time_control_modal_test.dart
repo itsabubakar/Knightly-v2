@@ -22,7 +22,7 @@ void main() {
                 context: context,
                 isScrollControlled: true,
                 builder: (_) => TimeControlModal(
-                  timeIncrement: const TimeIncrement(180, 2),
+                  timeIncrement: const TimeIncrement(600, 0),
                   onSelected: (choice) => selected = choice,
                 ),
               ),
@@ -39,10 +39,14 @@ void main() {
     final isIOS = debugDefaultTargetPlatformOverride == TargetPlatform.iOS;
     expect(find.byType(PlatformChoiceChip), isIOS ? findsWidgets : findsNothing);
 
-    await tester.tap(find.text('5+0'));
+    // No Bullet or Blitz: the Board API allows only Rapid and slower lobby games.
+    expect(find.text('3+2'), findsNothing);
+    expect(find.text('1+0'), findsNothing);
+
+    await tester.tap(find.text('15+10'));
     await tester.pumpAndSettle();
 
-    expect(selected, const TimeIncrement(300, 0));
+    expect(selected, const TimeIncrement(900, 10));
     expect(find.byType(TimeControlModal), findsNothing);
   });
 }

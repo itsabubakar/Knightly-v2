@@ -1,7 +1,6 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/study/study.dart';
 import 'package:lichess_mobile/src/model/study/study_filter.dart';
 import 'package:lichess_mobile/src/model/study/study_repository.dart';
@@ -34,30 +33,6 @@ final _hotStudiesProvider = FutureProvider.autoDispose<IList<StudyPageItem>>((Re
   );
 });
 
-final _myStudiesLengthProvider = FutureProvider.autoDispose<int>((Ref ref) {
-  final authUser = ref.watch(authControllerProvider);
-  if (authUser == null) return Future.value(0);
-
-  return ref.withClientCacheFor(
-    (client) => StudyRepository(ref, client)
-        .getStudies(category: StudyCategory.mine, order: StudyListOrder.updated)
-        .then((value) => value.studies.length),
-    const Duration(hours: 6),
-  );
-});
-
-final _myFavoriteStudiesLengthProvider = FutureProvider.autoDispose<int>((Ref ref) {
-  final authUser = ref.watch(authControllerProvider);
-  if (authUser == null) return Future.value(0);
-
-  return ref.withClientCacheFor(
-    (client) => StudyRepository(ref, client)
-        .getStudies(category: StudyCategory.likes, order: StudyListOrder.updated)
-        .then((value) => value.studies.length),
-    const Duration(hours: 6),
-  );
-});
-
 class const LearnTabScreen({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,11 +58,7 @@ class const LearnTabScreen({super.key}) extends ConsumerWidget {
 class const _Body() extends ConsumerWidget {
   Future<void> _refreshData(WidgetRef ref) async {
     try {
-      await Future.wait([
-        ref.refresh(_hotStudiesProvider.future),
-        ref.refresh(_myStudiesLengthProvider.future),
-        ref.refresh(_myFavoriteStudiesLengthProvider.future),
-      ]);
+      await Future.wait([ref.refresh(_hotStudiesProvider.future)]);
     } catch (_) {
       // Refreshing while the server is unavailable is expected to fail. The
       // failed responses are what keep the server status up to date, so there
@@ -98,10 +69,6 @@ class const _Body() extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connectionStatus = ref.watch(lichessConnectionStatusProvider);
-    final authUser = ref.watch(authControllerProvider);
-    final haveIStudies = authUser != null && (ref.watch(_myStudiesLengthProvider).value ?? 0) > 0;
-    final haveIFavoriteStudies =
-        authUser != null && (ref.watch(_myFavoriteStudiesLengthProvider).value ?? 0) > 0;
 
     return ListTileTheme.merge(
       iconColor: Theme.of(context).colorScheme.primary,
@@ -190,39 +157,6 @@ class const _Body() extends ConsumerWidget {
                   ),
                 ),
               },
-              if (haveIStudies || haveIFavoriteStudies)
-                ListSection(
-                  hasLeading: true,
-                  margin: Styles.horizontalBodyPadding.add(Styles.sectionBottomPadding),
-                  children: [
-                    if (haveIStudies)
-                      ListTile(
-                        leading: const Icon(Symbols.local_library),
-                        trailing: Theme.of(context).platform == TargetPlatform.iOS
-                            ? const CupertinoListTileChevron()
-                            : null,
-                        title: Text(context.l10n.studyMyStudies),
-                        onTap: connectionStatus == LichessConnectionStatus.online
-                            ? () => Navigator.of(context).pushHidingTabBar(
-                                StudyListScreen.buildRoute(initialCategory: StudyCategory.mine),
-                              )
-                            : null,
-                      ),
-                    if (haveIFavoriteStudies)
-                      ListTile(
-                        leading: const Icon(Symbols.favorite),
-                        trailing: Theme.of(context).platform == TargetPlatform.iOS
-                            ? const CupertinoListTileChevron()
-                            : null,
-                        title: Text(context.l10n.studyMyFavoriteStudies),
-                        onTap: connectionStatus == LichessConnectionStatus.online
-                            ? () => Navigator.of(context).pushHidingTabBar(
-                                StudyListScreen.buildRoute(initialCategory: StudyCategory.likes),
-                              )
-                            : null,
-                      ),
-                  ],
-                ),
             ],
           ],
         ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -10,19 +12,43 @@ import '../../model/auth/fake_auth_storage.dart';
 import '../../test_helpers.dart';
 import '../../test_provider_scope.dart';
 
-final client = MockClient((request) {
-  if (request.url.path == '/api/mobile/profile/$testUserId') {
-    return mockResponse(userProfileResponse, 200);
-  }
-  return mockResponse('', 404);
-});
+/// Serves the parts of a `/api/mobile/profile` response [profileResponse] from the public endpoints
+/// the profile screen uses in Knightly.
+MockClient profileClient(String profileResponse) {
+  final json = jsonDecode(profileResponse) as Map<String, dynamic>;
+  final profile = json['profile'] as Map<String, dynamic>;
+  final status = json['status'] as Map<String, dynamic>?;
+  return MockClient((request) {
+    switch (request.url.path) {
+      case '/api/user/$testUserId':
+        return mockResponse(jsonEncode(profile), 200);
+      case '/api/user/$testUserId/activity':
+        return mockResponse(jsonEncode(json['activity'] ?? []), 200);
+      case '/api/games/user/$testUserId':
+        return mockResponse(
+          (json['games'] as List<dynamic>? ?? []).map(jsonEncode).join('\n'),
+          200,
+        );
+      case '/api/users/status':
+        return mockResponse(
+          jsonEncode([
+            {
+              'id': profile['id'],
+              'name': profile['username'],
+              'online': status?['online'],
+              'playing': status?['playing'] != null,
+            },
+          ]),
+          200,
+        );
+    }
+    return mockResponse('', 404);
+  });
+}
 
-final clientCannotChallenge = MockClient((request) {
-  if (request.url.path == '/api/mobile/profile/$testUserId') {
-    return mockResponse(userProfileResponseCannotChallenge, 200);
-  }
-  return mockResponse('', 404);
-});
+final client = profileClient(userProfileResponse);
+
+final clientCannotChallenge = profileClient(userProfileResponseCannotChallenge);
 
 void main() {
   group('UserScreen', () {

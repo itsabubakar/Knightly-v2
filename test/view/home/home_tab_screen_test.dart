@@ -7,7 +7,6 @@ import 'package:lichess_mobile/src/model/game/game_storage.dart';
 import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/styles/lichess_icons.dart';
 import 'package:lichess_mobile/src/view/account/profile_screen.dart';
-import 'package:lichess_mobile/src/view/auth/email_login_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_list_tile.dart';
 import 'package:lichess_mobile/src/view/home/games_carousel.dart';
 import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
@@ -22,7 +21,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../binding.dart';
 import '../../example_data.dart';
 import '../../mock_server_responses.dart';
-import '../../model/auth/auth_repository_test.dart';
 import '../../model/auth/fake_auth_storage.dart';
 import '../../model/challenge/challenge_repository_test.dart';
 import '../../network/fake_http_client_factory.dart';
@@ -271,38 +269,6 @@ void main() {
 
         expect(find.widgetWithText(PlatformAppBar, 'Home widgets'), findsNothing);
       });
-
-      testWidgets('featured tournaments checkbox is shown when there are some to show', (
-        tester,
-      ) async {
-        final mockClient = MockClient((request) {
-          if (request.url.path == '/tournament/featured') {
-            return mockResponse(mockFeaturedTournamentsResponse, 200);
-          }
-          return mockResponse('', 200);
-        });
-        final app = await makeTestProviderScope(
-          tester,
-          child: const Application(),
-          overrides: {
-            httpClientFactoryProvider: httpClientFactoryProvider.overrideWith(
-              (ref) => FakeHttpClientFactory(() => mockClient),
-            ),
-          },
-        );
-        await tester.pumpWidget(app);
-
-        // wait for connectivity
-        expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Customize'));
-        await tester.pumpAndSettle(); // wait for settings screen to open
-
-        expect(find.widgetWithText(PlatformAppBar, 'Home widgets'), findsOneWidget);
-        expect(find.byType(FeaturedTournamentsWidget), findsOneWidget);
-        expect(find.text('Open tournaments'), findsOneWidget);
-      });
     });
   });
 
@@ -542,29 +508,36 @@ void main() {
     });
   });
 
-  group('Sign in options', () {
-    testWidgets('opens the email login screen', (tester) async {
-      final app = await makeTestProviderScope(tester, child: const Application());
+  group('Sign in', () {
+    testWidgets('opens the lichess authorization page in the browser', (tester) async {
+      Uri? openedUrl;
+      final app = await makeTestProviderScope(
+        tester,
+        child: const Application(),
+        overrides: {
+          oauthBrowserLauncherProvider: oauthBrowserLauncherProvider.overrideWithValue((url) async {
+            openedUrl = url;
+            return true;
+          }),
+        },
+      );
       await tester.pumpWidget(app);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sign in with an email'));
-      await tester.pumpAndSettle();
 
-      expect(find.byType(EmailLoginScreen), findsOneWidget);
+      expect(openedUrl?.path, '/oauth');
+      expect(find.text('Something went wrong.'), findsNothing);
     });
-  });
 
-  group('Sign in error handling', () {
-    testWidgets('shows an error snackbar when sign-in fails', (tester) async {
+    testWidgets('shows an error snackbar when the browser cannot be opened', (tester) async {
       final app = await makeTestProviderScope(
         tester,
         child: const Application(),
         overrides: {
-          appAuthProvider: appAuthProvider.overrideWith(
-            (ref) => FakeFlutterAppAuth((request) async => throw Exception('authorization failed')),
+          oauthBrowserLauncherProvider: oauthBrowserLauncherProvider.overrideWithValue(
+            (url) async => false,
           ),
         },
       );
@@ -574,34 +547,9 @@ void main() {
       expect(find.text('Sign in'), findsOneWidget);
 
       await tester.tap(find.text('Sign in'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Sign in with the browser'));
       await tester.pumpAndSettle();
 
       expect(find.text('Something went wrong.'), findsOneWidget);
-    });
-
-    testWidgets('does not show a snackbar when the user cancels sign-in', (tester) async {
-      final app = await makeTestProviderScope(
-        tester,
-        child: const Application(),
-        overrides: {
-          appAuthProvider: appAuthProvider.overrideWith(
-            (ref) => FakeFlutterAppAuth((request) async => throw userCancelled()),
-          ),
-        },
-      );
-      await tester.pumpWidget(app);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Sign in'), findsOneWidget);
-
-      await tester.tap(find.text('Sign in'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Sign in with the browser'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Something went wrong.'), findsNothing);
     });
   });
 

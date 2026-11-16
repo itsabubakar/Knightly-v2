@@ -1,4 +1,3 @@
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/study/study_filter.dart';
@@ -113,18 +112,6 @@ class _StudyListScreenState() extends ConsumerState<StudyListScreen> {
         onStudyTap: (context, study) =>
             Navigator.of(context)
                 .pushHidingTabBar(StudyScreen.buildRoute((id: study.id, initialChapter: null))),
-        header: authUser != null
-            ? StudyCategoryChips(
-                categories: StudyCategory.values.lock,
-                currentCategory: category,
-                currentCategoryKey: currentCategoryKey,
-                onCategorySelected: (cat) {
-                  setState(() {
-                    category = cat;
-                  });
-                },
-              )
-            : null,
         searchAction: authUser != null
             ? BottomSearchBarButton(
                 onPressed: () => _showCreateStudySheet(authUser),

@@ -42,38 +42,20 @@ final closeAccountMutation = Mutation<void>();
 /// Mutation for deleting the account of the signed in user.
 final deleteAccountMutation = Mutation<void>();
 
-/// Mutation for requesting the login code email.
-final emailLoginCodeRequestMutation = Mutation<void>();
-
-/// Mutation for exchanging the login code for a session.
-final emailLoginCodeSignInMutation = Mutation<void>();
-
 class AuthController() extends Notifier<AuthUser?> {
   @override
   AuthUser? build() {
     return ref.read(preloadedDataProvider).requireValue.authUser;
   }
 
-  /// Signs in the user with the OAuth browser flow.
-  Future<void> signIn() async {
-    final authUser = await ref.read(authRepositoryProvider).signIn();
-    await _onSignedIn(authUser);
-  }
+  /// Starts signing in the user with the OAuth browser flow.
+  ///
+  /// The sign in completes when lichess redirects back to the app, with [completeSignIn].
+  Future<void> signIn() => ref.read(authRepositoryProvider).startSignIn();
 
-  /// Asks lichess to email a login code for the [username] account to [email].
-  Future<void> requestEmailLoginCode({required String username, required String email}) {
-    return ref.read(authRepositoryProvider).requestEmailLoginCode(username: username, email: email);
-  }
-
-  /// Signs in the user on the [username] account with the login code they received by [email].
-  Future<void> signInWithEmailCode({
-    required String username,
-    required String email,
-    required String code,
-  }) async {
-    final authUser = await ref
-        .read(authRepositoryProvider)
-        .signInWithEmailCode(username: username, email: email, code: code);
+  /// Completes the sign in started by [signIn] from the OAuth redirect [callback].
+  Future<void> completeSignIn(Uri callback) async {
+    final authUser = await ref.read(authRepositoryProvider).completeSignIn(callback);
     await _onSignedIn(authUser);
   }
 

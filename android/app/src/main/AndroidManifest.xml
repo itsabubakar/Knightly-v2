@@ -42,6 +42,15 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
+            <!-- OAuth redirect after signing in on lichess in the browser. It goes to MainActivity, so
+                 that app_links delivers it to AppLinksService, even when it cold-starts the app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app.knightly" android:host="login-callback" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -146,21 +155,6 @@
                 <data android:pathPattern="/......../white" />
             </intent-filter>
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
-        </activity>
-        <!-- OAuth custom-scheme callback receiver for flutter_appauth. We declare the intent-filter
-             here (with `tools:node="replace"`) instead of relying on the `appAuthRedirectScheme`
-             manifest placeholder. The theme matches the one the plugin contributes. -->
-        <activity
-            android:name="net.openid.appauth.RedirectUriReceiverActivity"
-            android:theme="@style/Theme.AppCompat.Translucent.NoTitleBar"
-            android:exported="true"
-            tools:node="replace">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="org.lichess.mobile" android:host="login-callback" />
-            </intent-filter>
         </activity>
 
         <receiver android:exported="false"

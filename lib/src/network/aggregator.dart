@@ -10,26 +10,11 @@ final _logger = Logger('Aggregator');
 
 const kAggregationInterval = Duration(milliseconds: 5);
 
-final Uri _homeUri = Uri(path: '/api/mobile/home');
-final Uri _watchUri = Uri(path: '/api/mobile/watch');
-
 /// Map of target URIs to their grouped client-side URIs and JSON keys.
-final Map<Uri, ISet<({String key, RegExp pathRegexp})>> _targetUris = {
-  _homeUri: ISet({
-    (key: 'account', pathRegexp: RegExp(r'^\/api\/account$')),
-    (key: 'recentGames', pathRegexp: RegExp(r'^\/api\/games\/user\/[\w-]+$')),
-    (key: 'ongoingGames', pathRegexp: RegExp(r'^\/api\/account\/playing$')),
-    (key: 'challenges', pathRegexp: RegExp(r'^\/api\/challenge$')),
-    (key: 'tournaments', pathRegexp: RegExp(r'^\/tournament\/featured$')),
-    (key: 'inbox', pathRegexp: RegExp(r'^\/inbox\/unread-count$')),
-    (key: 'friends', pathRegexp: RegExp(r'^\/api\/mobile\/following$')),
-  }),
-  _watchUri: ISet({
-    (key: 'broadcast', pathRegexp: RegExp(r'^\/api\/broadcast\/top$')),
-    (key: 'tv', pathRegexp: RegExp(r'^\/api\/tv\/channels$')),
-    (key: 'streamers', pathRegexp: RegExp(r'^\/api\/streamer\/live$')),
-  }),
-};
+///
+/// Empty in Knightly: lichess's grouped endpoints (`/api/mobile/home`, `/api/mobile/watch`) accept
+/// only the official app's tokens, so every request is made on its own.
+final Map<Uri, ISet<({String key, RegExp pathRegexp})>> _targetUris = {};
 
 typedef CachedAggregatorRequest = ({Uri targetGroupUri, Future<Map<String, dynamic>> future});
 

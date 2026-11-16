@@ -6,7 +6,6 @@ import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
 import 'package:lichess_mobile/src/view/learn/learn_tab_screen.dart';
 import 'package:lichess_mobile/src/view/more/more_tab_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_tab_screen.dart';
-import 'package:lichess_mobile/src/view/watch/watch_tab_screen.dart';
 import 'package:lichess_mobile/src/widgets/background.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart'
     show BlurredBarBackground, ios27GlassSettings, useLiquidGlass, usePinnedNavBar;
@@ -178,8 +177,6 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
             puzzlesTabInteraction.notifyItemTapped();
           case BottomTab.learn:
             learnTabInteraction.notifyItemTapped();
-          case BottomTab.watch:
-            watchTabInteraction.notifyItemTapped();
           case BottomTab.more:
             moreTabInteraction.notifyItemTapped();
         }
@@ -210,12 +207,6 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
           builder: (context) => const LearnTabScreen(),
         );
       case 3:
-        return _MaterialTabView(
-          navigatorKey: watchNavigatorKey,
-          tab: BottomTab.watch,
-          builder: (context) => const WatchTabScreen(),
-        );
-      case 4:
         return _MaterialTabView(
           navigatorKey: moreNavigatorKey,
           tab: BottomTab.more,

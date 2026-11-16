@@ -8,11 +8,6 @@ const kLichessWSHost = String.fromEnvironment(
   defaultValue: 'socket.lichess.dev',
 );
 
-const kLichessWSSecret = String.fromEnvironment(
-  'LICHESS_WS_SECRET',
-  defaultValue: 'somethingElseInProd',
-);
-
 const kLichessCDNHost = String.fromEnvironment(
   'LICHESS_CDN_HOST',
   defaultValue: 'https://lichess.org',
@@ -30,7 +25,15 @@ const kLichessTablebaseHost = String.fromEnvironment(
 
 const kLichessCustomUriSchemeName = 'org.lichess.mobile';
 
-const kLichessClientId = 'lichess_mobile';
+/// Name of the app, sent to lichess in the user agent of every request.
+const kAppName = 'Knightly';
+
+/// The OAuth client id Knightly signs in with. Lichess accepts any client id without registration.
+const kLichessClientId = 'knightly';
+
+/// The custom URI scheme of the OAuth redirect: Knightly's own, so the official Lichess app
+/// installed on the same device can't receive the login callback.
+const kOAuthCustomUriSchemeName = 'app.knightly';
 
 const kSRIStorageKey = 'socket_random_identifier';
 

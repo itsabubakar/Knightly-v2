@@ -1,13 +1,10 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:dartchess/dartchess.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
-import 'package:lichess_mobile/src/model/message/message_repository.dart';
-import 'package:lichess_mobile/src/model/team/team_providers.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
@@ -18,20 +15,16 @@ import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
 import 'package:lichess_mobile/src/view/board_editor/board_editor_screen.dart';
 import 'package:lichess_mobile/src/view/clock/clock_tool_screen.dart';
 import 'package:lichess_mobile/src/view/explorer/opening_explorer_screen.dart';
-import 'package:lichess_mobile/src/view/message/contacts_screen.dart';
 import 'package:lichess_mobile/src/view/more/import_pgn_screen.dart';
 import 'package:lichess_mobile/src/view/relation/friend_screen.dart';
 import 'package:lichess_mobile/src/view/settings/settings_screen.dart';
-import 'package:lichess_mobile/src/view/team/team_updates_screen.dart';
 import 'package:lichess_mobile/src/view/user/player_screen.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:lichess_mobile/src/widgets/misc.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/settings.dart';
-import 'package:lichess_mobile/src/widgets/user.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class const MoreTabScreen({super.key}) extends ConsumerWidget {
   @override
@@ -177,28 +170,6 @@ class const _Body() extends ConsumerWidget {
             ],
           ),
           const _AccountSection(),
-          if (Theme.of(context).platform == TargetPlatform.android)
-            ListSection(
-              hasLeading: true,
-              children: [
-                ListTile(
-                  leading: PatronIcon(color: 10, size: IconTheme.of(context).size),
-                  title: Text(context.l10n.patronDonate),
-                  subtitle: Text(context.l10n.patronBecomePatron),
-                  enabled: isOnline,
-                  onTap: () {
-                    launchUrl(Uri.parse('https://lichess.org/patron'));
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: Text(context.l10n.about),
-                  onTap: () {
-                    Navigator.of(context).push(AboutScreen.buildRoute());
-                  },
-                ),
-              ],
-            ),
           Padding(
             padding: Styles.bodySectionPadding,
             child: LichessMessage(style: TextTheme.of(context).bodyMedium),
@@ -213,11 +184,7 @@ class const _AccountSection() extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isOnline = ref.watch(isDeviceOnlineProvider);
-    final account = ref.watch(accountProvider);
     final authUser = ref.watch(authControllerProvider);
-    final kidMode = account.value?.kid ?? false;
-    final unreadMessages = ref.watch(unreadMessagesProvider).value?.unread ?? 0;
-    final unreadTeamUpdates = ref.watch(unreadTeamUpdatesCountProvider).value ?? 0;
     final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
 
     final user = authUser?.user;
@@ -236,34 +203,6 @@ class const _AccountSection() extends ConsumerWidget {
               Navigator.of(context).push(ProfileScreen.buildRoute());
             },
           ),
-          if (!kidMode) ...[
-            ListTile(
-              leading: Badge.count(
-                isLabelVisible: unreadMessages > 0,
-                count: unreadMessages,
-                child: const Icon(Icons.mail_outline),
-              ),
-              title: Text(context.l10n.inbox),
-              trailing: isIOS ? const CupertinoListTileChevron() : null,
-              enabled: isOnline,
-              onTap: () {
-                Navigator.of(context).push(ContactsScreen.buildRoute());
-              },
-            ),
-            ListTile(
-              leading: Badge.count(
-                isLabelVisible: unreadTeamUpdates > 0,
-                count: unreadTeamUpdates,
-                child: const Icon(Icons.groups_outlined),
-              ),
-              title: Text(context.l10n.teamTeamUpdates),
-              trailing: isIOS ? const CupertinoListTileChevron() : null,
-              enabled: isOnline,
-              onTap: () {
-                Navigator.of(context).push(TeamUpdatesScreen.buildRoute());
-              },
-            ),
-          ],
         ],
         ListTile(
           leading: const Icon(Icons.settings_outlined),

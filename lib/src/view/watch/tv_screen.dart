@@ -12,8 +12,6 @@ import 'package:lichess_mobile/src/model/tv/tv_controller.dart';
 import 'package:lichess_mobile/src/model/tv/tv_game_controller.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/model/user/user_repository_providers.dart';
-import 'package:lichess_mobile/src/styles/lichess_icons.dart';
-import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/chessboard.dart';
 import 'package:lichess_mobile/src/utils/focus_detector.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
@@ -23,7 +21,6 @@ import 'package:lichess_mobile/src/view/chat/chat_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_loading_board.dart';
 import 'package:lichess_mobile/src/view/game/game_player.dart';
 import 'package:lichess_mobile/src/view/settings/sound_toggle_button.dart';
-import 'package:lichess_mobile/src/view/tournament/tournament_screen.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
 import 'package:lichess_mobile/src/widgets/clock.dart';
@@ -248,15 +245,6 @@ class const _TvGameBody({
                 onTap: () => ref.read(gameCtrl.notifier).toggleBoard(),
                 icon: CupertinoIcons.arrow_2_squarepath,
               ),
-              if (game.meta.tournament != null)
-                BottomBarButton(
-                  label: context.l10n.viewTournament,
-                  icon: LichessIcons.tournament_cup,
-                  onTap: () {
-                    Navigator.of(context)
-                        .pushHidingTabBar(TournamentScreen.buildRoute(game.meta.tournament!.id));
-                  },
-                ),
               if (canShowChat) ChatBottomBarButton(options: chatOptions),
               BottomBarGroup(
                 children: [

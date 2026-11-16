@@ -32,7 +32,6 @@ import 'package:lichess_mobile/src/view/explorer/explorer_view.dart';
 import 'package:lichess_mobile/src/view/game/exported_game_title.dart';
 import 'package:lichess_mobile/src/view/game/game_common_widgets.dart';
 import 'package:lichess_mobile/src/view/study/add_pgn_to_study_screen.dart';
-import 'package:lichess_mobile/src/view/tournament/tournament_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_action_sheet.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_choice_picker.dart';
@@ -230,9 +229,6 @@ class _TabbedBodyState() extends State<_TabbedBody> with SingleTickerProviderSta
   late final List<AnalysisTab> tabs;
   late final TabController _tabController;
 
-  /// Whether the board is small, once switched with the bottom bar button; not persisted.
-  bool? _smallBoard;
-
   @override
   void initState() {
     super.initState();
@@ -260,13 +256,11 @@ class _TabbedBodyState() extends State<_TabbedBody> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
-    final smallBoard = _smallBoard ?? isSmallBoardByDefault(context);
     return _Body(
       options: widget.options,
       controller: _tabController,
       tabs: tabs,
-      smallBoard: smallBoard,
-      onToggleSmallBoard: () => setState(() => _smallBoard = !smallBoard),
+      smallBoard: isSmallBoardByDefault(context),
     );
   }
 }
@@ -276,7 +270,6 @@ class const _Body({
   required final TabController controller,
   required final List<AnalysisTab> tabs,
   required final bool smallBoard,
-  required final VoidCallback onToggleSmallBoard,
 }) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -375,12 +368,7 @@ class const _Body({
                 analysisState: analysisState,
               )
             : null,
-        bottomBar: _BottomBar(
-          options: options,
-          tabController: controller,
-          smallBoard: smallBoard,
-          onToggleSmallBoard: onToggleSmallBoard,
-        ),
+        bottomBar: _BottomBar(options: options, tabController: controller),
         bottomBarOverContent: true,
         pockets: analysisState.currentPosition.pockets,
         children: [
@@ -471,13 +459,14 @@ class const _PlayerName({required final Player player}) extends StatelessWidget 
 class const _BottomBar({
   required final AnalysisOptions options,
   required final TabController tabController,
-  required final bool smallBoard,
-  required final VoidCallback onToggleSmallBoard,
 }) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ctrlProvider = analysisControllerProvider(options);
     final analysisState = ref.watch(ctrlProvider).requireValue;
+    final showBestMoveArrow = ref.watch(
+      analysisPreferencesProvider.select((prefs) => prefs.showBestMoveArrow),
+    );
 
     return BottomBar(
       cupertinoGlass: true,
@@ -491,8 +480,15 @@ class const _BottomBar({
               },
               icon: Icons.menu,
             ),
-            if (canToggleBoardSize(context))
-              BoardSizeToggleButton(smallBoard: smallBoard, onTap: onToggleSmallBoard),
+            if (analysisState.isComputerAnalysisAllowed)
+              BottomBarButton(
+                key: const ValueKey('toggle-best-move-arrow'),
+                label: context.l10n.bestMoveArrow,
+                icon: Icons.arrow_outward,
+                highlighted: showBestMoveArrow,
+                onTap: () =>
+                    ref.read(analysisPreferencesProvider.notifier).toggleShowBestMoveArrow(),
+              ),
           ],
         ),
         if (analysisState.isComputerAnalysisAllowed)
@@ -605,15 +601,6 @@ class const _BottomBar({
             ),
             onPressed: () =>
                 ref.read(analysisControllerProvider(options).notifier).toggleEngineThreatMode(),
-          ),
-        if (analysisState.archivedGame?.data.arenaTournamentId != null)
-          BottomSheetAction(
-            makeLabel: (context) => Text(context.l10n.viewTournament),
-            onPressed: () {
-              Navigator.of(context).push(
-                TournamentScreen.buildRoute(analysisState.archivedGame!.data.arenaTournamentId!),
-              );
-            },
           ),
         if (options case ArchivedGame())
           if (analysisState.canRequestServerAnalysis)

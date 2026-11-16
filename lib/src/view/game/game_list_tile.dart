@@ -22,7 +22,6 @@ import 'package:lichess_mobile/src/view/game/game_common_widgets.dart';
 import 'package:lichess_mobile/src/view/game/gif_export.dart';
 import 'package:lichess_mobile/src/view/game/gif_export_dialog.dart';
 import 'package:lichess_mobile/src/view/game/status_l10n.dart';
-import 'package:lichess_mobile/src/view/tournament/tournament_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/board_thumbnail.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
@@ -314,14 +313,6 @@ class const GameContextMenu({
                     },
               child: Text(context.l10n.analysis),
             ),
-            if (game.arenaTournamentId != null)
-              BottomSheetContextMenuAction(
-                icon: LichessIcons.tournament_cup,
-                onPressed: () {
-                  Navigator.of(context).push(TournamentScreen.buildRoute(game.arenaTournamentId!));
-                },
-                child: Text(context.l10n.viewTournament),
-              ),
             if (isLoggedIn && onPressedBookmark != null)
               BottomSheetContextMenuAction(
                 onPressed: () => onPressedBookmark?.call(context),

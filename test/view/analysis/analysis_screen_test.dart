@@ -23,7 +23,6 @@ import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/network/socket.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_layout.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
-import 'package:lichess_mobile/src/view/analysis/board_size_toggle_button.dart';
 import 'package:lichess_mobile/src/view/engine/engine_button.dart';
 import 'package:lichess_mobile/src/view/engine/engine_gauge.dart';
 import 'package:lichess_mobile/src/view/engine/engine_lines.dart';
@@ -109,59 +108,35 @@ void main() {
       );
     }, variant: kPlatformVariant);
 
-    group('board size toggle', () {
-      AnalysisScreen makeScreen() => AnalysisScreen(
-        options: AnalysisOptions.pgn(
-          id: const StringId('standalone'),
-          orientation: Side.white,
-          pgn: sanMoves,
-          isComputerAnalysisAllowed: false,
-          variant: Variant.standard,
-        ),
-      );
+    group('best move arrow toggle', () {
+      final toggleButton = find.byKey(const ValueKey('toggle-best-move-arrow'));
 
-      final toggleButton = find.byType(BoardSizeToggleButton);
+      testWidgets('switches the best move arrow on and off', (tester) async {
+        await makeEngineTestApp(tester);
+        await tester.pump(kRequestEvalDebounceDelay + kEngineEvalEmissionThrottleDelay);
 
-      testWidgets('switches between the full size board and the small board', (tester) async {
-        final app = await makeTestProviderScopeApp(tester, home: makeScreen());
-        await tester.pumpWidget(app);
-        await tester.pumpAndSettle();
-
-        // A phone opens with the full size board.
-        expect(toggleButton, findsOneWidget);
-        expect(tester.widget<BoardSizeToggleButton>(toggleButton).smallBoard, isFalse);
-        expect(find.byIcon(CupertinoIcons.chevron_up), findsOneWidget);
-        final fullBoardSize = tester.getSize(find.byType(Chessboard)).width;
+        expect(tester.widget<BottomBarButton>(toggleButton).highlighted, isTrue);
+        expect(find.byType(BoardShapeWidget), findsOne);
 
         await tester.tap(toggleButton);
-        await tester.pumpAndSettle();
+        await tester.pump();
 
-        expect(tester.widget<BoardSizeToggleButton>(toggleButton).smallBoard, isTrue);
-        expect(find.byIcon(CupertinoIcons.chevron_down), findsOneWidget);
-        expect(
-          tester.getSize(find.byType(Chessboard)).width,
-          moreOrLessEquals(fullBoardSize * kSmallBoardScale),
-        );
+        expect(tester.widget<BottomBarButton>(toggleButton).highlighted, isFalse);
+        expect(find.byType(BoardShapeWidget), findsNothing);
 
         await tester.tap(toggleButton);
-        await tester.pumpAndSettle();
+        await tester.pump();
 
-        expect(tester.widget<BoardSizeToggleButton>(toggleButton).smallBoard, isFalse);
-        expect(tester.getSize(find.byType(Chessboard)).width, moreOrLessEquals(fullBoardSize));
-      }, variant: kPlatformVariant);
+        expect(tester.widget<BottomBarButton>(toggleButton).highlighted, isTrue);
+        expect(find.byType(BoardShapeWidget), findsOne);
+      });
 
-      testWidgets('is not shown in landscape', (tester) async {
-        final app = await makeTestProviderScopeApp(
-          tester,
-          home: makeScreen(),
-          surfaceSize: kTestSurfaceSize.flipped,
-        );
-        await tester.pumpWidget(app);
-        await tester.pumpAndSettle();
+      testWidgets('is not shown if computer analysis is not allowed', (tester) async {
+        await makeEngineTestApp(tester, isComputerAnalysisAllowed: false);
+        await tester.pump(kRequestEvalDebounceDelay + kEngineEvalEmissionThrottleDelay);
 
-        expect(find.byType(Chessboard), findsOneWidget);
         expect(toggleButton, findsNothing);
-      }, variant: kPlatformVariant);
+      });
     });
 
     testWidgets('move backwards and forward', (tester) async {

@@ -57,7 +57,7 @@ void main() {
       expect(requestedPages, [1, 2]);
     });
 
-    testWidgets('Category chips, search field and create button', variant: kPlatformVariant, (
+    testWidgets('No category chips, search field and create button', variant: kPlatformVariant, (
       WidgetTester tester,
     ) async {
       final mockClient = MockClient((request) {
@@ -80,11 +80,8 @@ void main() {
       await tester.pumpWidget(app);
       await tester.pump();
 
-      // The chips are the first item of the list, on both platforms.
-      expect(
-        find.descendant(of: find.byType(ListView), matching: find.byType(StudyCategoryChips)),
-        findsOneWidget,
-      );
+      // The personal categories reject API tokens, so there are no category chips.
+      expect(find.byType(StudyCategoryChips), findsNothing);
 
       final isIOS = debugDefaultTargetPlatformOverride == TargetPlatform.iOS;
       // On iOS, the search field and the create button are at the bottom of the screen.

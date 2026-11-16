@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/binding/binding.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
@@ -16,13 +15,6 @@ Future<void> reportSignInFailure(Ref ref, Object error, StackTrace stack) async 
   try {
     final crashlytics = LichessBinding.instance.firebaseCrashlytics;
 
-    // AppAuth's own error classification (type/code/oauth-error). See FlutterAppAuthPlatformErrorDetails.
-    final details = switch (error) {
-      FlutterAppAuthUserCancelledException(:final platformErrorDetails) => platformErrorDetails,
-      FlutterAppAuthPlatformException(:final platformErrorDetails) => platformErrorDetails,
-      _ => null,
-    };
-
     final browser = await System.instance.getDefaultBrowser();
     final preloadedData = ref.read(preloadedDataProvider).value;
     final deviceInfo = preloadedData?.deviceInfo;
@@ -33,9 +25,6 @@ Future<void> reportSignInFailure(Ref ref, Object error, StackTrace stack) async 
       _ => (Platform.operatingSystem, null, null),
     };
 
-    await crashlytics.setCustomKey('auth_error_type', details?.type ?? 'unknown');
-    await crashlytics.setCustomKey('auth_error_code', details?.code ?? 'unknown');
-    await crashlytics.setCustomKey('auth_oauth_error', details?.error ?? 'none');
     await crashlytics.setCustomKey('browser_package', browser?.package ?? 'unknown');
     await crashlytics.setCustomKey('browser_version', browser?.version ?? 'unknown');
     await crashlytics.setCustomKey('os', osName);

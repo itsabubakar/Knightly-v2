@@ -33,7 +33,10 @@ void openGameScreen(
 }) {
   if (game.variant.isReadSupported) {
     Navigator.of(context).pushHidingTabBar(
-      game.fullId != null
+      // Only an ongoing game of the user opens the game screen: Knightly can't connect to the
+      // player socket of a game (it accepts only the official app's tokens), and a finished game is
+      // fully shown by the analysis screen, from the public game export.
+      game.fullId != null && (game.status == .created || game.status == .started)
           ? GameScreen.buildRoute(
               source: ExistingGameSource(game.fullId!),
               loadingPosition: (

@@ -105,7 +105,7 @@ void main() {
     expect(find.text('Home'), labelMatcher);
     expect(find.text('Puzzles'), labelMatcher);
     expect(find.text('Learn'), labelMatcher);
-    expect(find.text('Watch'), labelMatcher);
+    expect(find.text('Watch'), findsNothing);
   });
 
   testWidgets(

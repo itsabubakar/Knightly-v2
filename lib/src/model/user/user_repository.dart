@@ -32,42 +32,54 @@ typedef UserScreenData = ({
 });
 
 class UserRepository(final LichessClient client, final Aggregator aggregator) {
-  Future<UserScreenData> getUserScreenData(UserId id) {
-    return client.readJson(
-      Uri(path: '/api/mobile/profile/$id'),
-      mapper: (json) {
-        final user = User.fromPick(pick(json, 'profile').required());
-        final activity = pick(
-          json,
-          'activity',
-        ).asListOrEmpty((p) => _userActivityFromPick(p.required())).toIList();
-        final recentGames = pick(json, 'games')
-            .asListOrEmpty((gamePick) => LightExportedGame.fromPick(gamePick.required()))
-            .map(
-              (e) => (
-                game: e,
-                // we know here user is not null for at least one of the players
-                pov: e.white.user?.id == id ? Side.white : Side.black,
-              ),
-            )
-            .toIList();
+  /// The data of the profile screen of the user [id].
+  ///
+  /// Built from public API endpoints, since `/api/mobile/profile` accepts only the official app's
+  /// tokens. Without a crosstable: the public one needs the signed in user's id.
+  Future<UserScreenData> getUserScreenData(UserId id) async {
+    final userFuture = getUser(id);
+    final activityFuture = getActivity(id)
+        .catchError((Object _) => const IListConst<UserActivity>([]));
+    final recentGamesFuture = client
+        .readNdJsonList(
+          Uri(
+            path: '/api/games/user/$id',
+            queryParameters: {
+              'max': '10',
+              'moves': 'false',
+              'lastFen': 'true',
+              'accuracy': 'true',
+              'opening': 'true',
+            },
+          ),
+          headers: {'Accept': 'application/x-ndjson'},
+          mapper: LightExportedGame.fromServerJson,
+        )
+        .catchError((Object _) => const IListConst<LightExportedGame>([]));
+    final statusFuture = getUsersStatuses(ISet({id}))
+        .then((statuses) => statuses.firstOrNull)
+        .catchError((Object _) => null);
 
-        final isOnline = pick(json, 'status').letOrNull((p) => p('online').asBoolOrNull());
-        final isPlayingLive = pick(
-          json,
-          'status',
-        ).letOrNull((p) => p('playing').asMapOrNull<String, dynamic>() != null);
-        final crosstable = pick(json, 'crosstable').letOrNull(Crosstable.fromPick);
+    final user = await userFuture;
+    final activity = await activityFuture;
+    final recentGames = await recentGamesFuture;
+    final status = await statusFuture;
 
-        return (
-          user: user,
-          activity: activity,
-          recentGames: recentGames,
-          isOnline: isOnline,
-          isPlayingLive: isPlayingLive,
-          crosstable: crosstable,
-        );
-      },
+    return (
+      user: user,
+      activity: activity,
+      recentGames: recentGames
+          .map(
+            (game) => (
+              game: game,
+              // we know here user is not null for at least one of the players
+              pov: game.white.user?.id == id ? Side.white : Side.black,
+            ),
+          )
+          .toIList(),
+      isOnline: status?.online,
+      isPlayingLive: status?.playing,
+      crosstable: null,
     );
   }
 

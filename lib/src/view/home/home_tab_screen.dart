@@ -14,14 +14,10 @@ import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/blog/blog.dart';
 import 'package:lichess_mobile/src/model/blog/blog_repository.dart';
 import 'package:lichess_mobile/src/model/challenge/challenges.dart';
-import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/correspondence/correspondence_game_storage.dart';
 import 'package:lichess_mobile/src/model/correspondence/offline_correspondence_game.dart';
 import 'package:lichess_mobile/src/model/game/game_history.dart';
-import 'package:lichess_mobile/src/model/message/message_repository.dart';
 import 'package:lichess_mobile/src/model/relation/following_user.dart';
-import 'package:lichess_mobile/src/model/tournament/tournament.dart';
-import 'package:lichess_mobile/src/model/tournament/tournament_providers.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/styles/lichess_icons.dart';
@@ -43,12 +39,10 @@ import 'package:lichess_mobile/src/view/game/offline_correspondence_games_screen
 import 'package:lichess_mobile/src/view/home/blog_carousel.dart';
 import 'package:lichess_mobile/src/view/home/following_carousel.dart';
 import 'package:lichess_mobile/src/view/home/games_carousel.dart';
-import 'package:lichess_mobile/src/view/message/conversation_screen.dart';
 import 'package:lichess_mobile/src/view/play/ongoing_games_screen.dart';
 import 'package:lichess_mobile/src/view/play/play_bottom_sheet.dart';
 import 'package:lichess_mobile/src/view/play/play_menu.dart';
 import 'package:lichess_mobile/src/view/play/quick_game_matrix.dart';
-import 'package:lichess_mobile/src/view/tournament/tournament_list_screen.dart';
 import 'package:lichess_mobile/src/view/user/challenge_requests_screen.dart';
 import 'package:lichess_mobile/src/view/user/recent_games.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
@@ -148,7 +142,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
           data: (connectivity) {
             final isOnline = connectivity.isOnline;
             final authUser = ref.watch(authControllerProvider);
-            final unreadLichessMessage = ref.watch(unreadMessagesProvider).value?.lichess == true;
             final ongoingGames = ref.watch(ongoingGamesProvider);
             final offlineCorresGames = ref.watch(offlineOngoingCorrespondenceGamesProvider);
             final recentGames = ref.watch(myRecentGamesProvider);
@@ -166,9 +159,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
             final hasServerContent = isOnline && !isServerUnavailable;
             final showOutage = isServerUnavailable && !widget.editModeEnabled;
 
-            final featuredTournaments = hasServerContent
-                ? ref.watch(featuredTournamentsProvider)
-                : const AsyncValue.data(IListConst<LightTournament>([]));
             final blogPosts = hasServerContent
                 ? ref.watch(blogCarouselProvider)
                 : const AsyncValue.data(IListConst<BlogPost>([]));
@@ -178,10 +168,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
 
             // Widgets whose content can be empty should not show a checkbox in
             // edit mode when there is nothing to display next to it.
-            final hasFeaturedTournaments = featuredTournaments.maybeWhen(
-              data: (tournaments) => tournaments.any((t) => t.isSupportedInApp),
-              orElse: () => true,
-            );
             final hasFollowing = followingAsync.maybeWhen(
               data: (following) => following.isNotEmpty,
               orElse: () => true,
@@ -249,7 +235,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                           ],
                         ),
                       ),
-                      Expanded(child: FeaturedTournamentsWidget(featured: featuredTournaments)),
                     ],
                   )
                 else ...[
@@ -260,11 +245,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                       shouldShow: true,
                       child: Padding(padding: Styles.bodySectionPadding, child: QuickGameMatrix()),
                     ),
-                  _EditableWidget(
-                    widget: HomeEditableWidget.featuredTournaments,
-                    shouldShow: hasServerContent && hasFeaturedTournaments,
-                    child: FeaturedTournamentsWidget(featured: featuredTournaments),
-                  ),
                   if (_worker != null && !isKidMode)
                     _EditableWidget(
                       widget: HomeEditableWidget.blogCarousel,
@@ -309,7 +289,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           const SizedBox(height: 8.0),
-                          FeaturedTournamentsWidget(featured: featuredTournaments),
                           if (_worker != null && !isKidMode)
                             _EditableWidget(
                               widget: HomeEditableWidget.blogCarousel,
@@ -367,11 +346,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                       ? _OngoingGamesCarousel(ongoingGames, maxGamesToShow: 20)
                       : _OfflineCorrespondenceCarousel(offlineCorresGames, maxGamesToShow: 20),
                 ),
-                _EditableWidget(
-                  widget: HomeEditableWidget.featuredTournaments,
-                  shouldShow: hasServerContent && hasFeaturedTournaments,
-                  child: FeaturedTournamentsWidget(featured: featuredTournaments),
-                ),
                 if (_worker != null && !isKidMode)
                   _EditableWidget(
                     widget: HomeEditableWidget.blogCarousel,
@@ -390,10 +364,7 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
               ];
             }
 
-            final content = ListView(
-              controller: homeScrollController,
-              children: [if (unreadLichessMessage) const _LichessMessageBanner(), ...widgets],
-            );
+            final content = ListView(controller: homeScrollController, children: widgets);
 
             return FocusDetector(
               onFocusLost: () {
@@ -454,10 +425,8 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
       await Future.wait([
         ref.refresh(myRecentGamesProvider.future),
         if (isOnline) ref.refresh(challengesProvider.future),
-        if (isOnline) ref.refresh(unreadMessagesProvider.future),
         if (isOnline) ref.refresh(accountProvider.future),
         if (isOnline) ref.refresh(ongoingGamesProvider.future),
-        if (isOnline) ref.refresh(featuredTournamentsProvider.future),
         if (isOnline) ref.refresh(followingCarouselProvider.future),
       ]);
     } catch (_) {
@@ -465,46 +434,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
       // provider surfaces its own error, and the failed responses are what keep
       // the server status up to date, so there is nothing to do here.
     }
-  }
-}
-
-class const _LichessMessageBanner() extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.tertiaryContainer,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context)
-              .pushHidingTabBar(
-                ConversationScreen.buildRoute(
-                  user: const LightUser(id: UserId('lichess'), name: 'lichess'),
-                ),
-              )
-              .then((_) => ref.invalidate(unreadMessagesProvider));
-        },
-        child: Padding(
-          padding: Styles.bodyPadding,
-          child: Column(
-            children: [
-              Text(
-                context.l10n.showUnreadLichessMessage,
-                style: TextStyle(
-                  color: theme.colorScheme.onTertiaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4.0),
-              Text(
-                context.l10n.readTheMessage,
-                style: TextStyle(color: theme.colorScheme.onTertiaryContainer),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

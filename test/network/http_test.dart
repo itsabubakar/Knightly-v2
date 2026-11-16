@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
-import 'package:lichess_mobile/src/model/auth/bearer.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/network/http.dart';
@@ -183,7 +182,7 @@ void main() {
         isA<http.BaseRequest>().having(
           (r) => r.headers['User-Agent'],
           'User-Agent',
-          'Lichess Mobile/0.0.0 as:anon sri:test-sri',
+          'Knightly/0.0.0 as:anon sri:test-sri',
         ),
       );
     });
@@ -208,7 +207,7 @@ void main() {
         isA<http.BaseRequest>().having(
           (r) => r.headers['User-Agent'],
           'User-Agent',
-          'Lichess Mobile/0.0.0 as:test-user-id sri:test-sri',
+          'Knightly/0.0.0 as:test-user-id sri:test-sri',
         ),
       );
     });
@@ -347,7 +346,7 @@ void main() {
         isA<http.BaseRequest>().having(
           (r) => r.headers['Authorization'],
           'Authorization',
-          'Bearer ${signBearerToken('test-token')}',
+          'Bearer test-token',
         ),
       );
     });
@@ -372,7 +371,7 @@ void main() {
                   }
                   return http.Response('', 404);
                 }),
-                userAgent: 'Lichess Mobile/0.0.0 as:test-user-id sri:test-sri',
+                userAgent: 'Knightly/0.0.0 as:test-user-id sri:test-sri',
               );
             }),
           },
@@ -400,7 +399,7 @@ void main() {
             isA<http.BaseRequest>().having(
               (r) => r.headers['Authorization'],
               'Authorization',
-              'Bearer ${signBearerToken('test-token')}',
+              'Bearer test-token',
             ),
           );
 
@@ -430,7 +429,7 @@ void main() {
                 }
                 return http.Response('', 404);
               }),
-              userAgent: 'Lichess Mobile/0.0.0 as:test-user-id sri:test-sri',
+              userAgent: 'Knightly/0.0.0 as:test-user-id sri:test-sri',
             );
           }),
         },
@@ -458,7 +457,7 @@ void main() {
           isA<http.BaseRequest>().having(
             (r) => r.headers['Authorization'],
             'Authorization',
-            'Bearer ${signBearerToken('test-token')}',
+            'Bearer test-token',
           ),
         );
 

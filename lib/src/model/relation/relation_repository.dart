@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -30,11 +31,19 @@ class const RelationRepository(final LichessClient client, final Aggregator aggr
   ///
   /// This is for displaying a recent following carousel or a preview of the following list.
   /// It contains useful information such as the last seen time and whether the user is currently playing a game.
-  Future<IList<FollowingUser>> getRecentFollowing() {
-    return aggregator.readNdJsonList(
-      Uri(path: '/api/mobile/following', queryParameters: {'nb': '10'}),
-      mapper: FollowingUser.fromJson,
+  ///
+  /// Built from the public `/api/rel/following`, since `/api/mobile/following` accepts only the
+  /// official app's tokens: it has no "currently playing" information.
+  Future<IList<FollowingUser>> getRecentFollowing() async {
+    final following = await getAllFollowing();
+    final recent = following.sortedByCompare(
+      (user) => user.seenAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      (a, b) => b.compareTo(a),
     );
+    return recent
+        .take(10)
+        .map((user) => FollowingUser(user: user.lightUser, seenAt: user.seenAt))
+        .toIList();
   }
 
   Future<void> follow(UserId userId) async {

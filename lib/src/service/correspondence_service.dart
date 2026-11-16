@@ -8,8 +8,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
-import 'package:lichess_mobile/src/model/auth/bearer.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
+import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/common/socket.dart';
 import 'package:lichess_mobile/src/model/correspondence/correspondence_game_storage.dart';
 import 'package:lichess_mobile/src/model/correspondence/offline_correspondence_game.dart';
@@ -136,7 +136,7 @@ class CorrespondenceService(final Logger _log, {required final Ref ref}) {
 
     WebSocket.userAgent = ref.read(userAgentProvider);
     final Map<String, String> wsHeaders = _authUser != null
-        ? {'Authorization': 'Bearer ${signBearerToken(_authUser!.token)}'}
+        ? {'Authorization': 'Bearer ${_authUser!.token}'}
         : {};
 
     int movesPlayed = 0;
@@ -145,7 +145,10 @@ class CorrespondenceService(final Logger _log, {required final Ref ref}) {
       if (gameToSync.registeredMoveAtPgn == null) {
         continue;
       }
-      final uri = lichessWSUri('/play/${gameToSync.fullId}/v6');
+      final uri = lichessWSUri(
+        '/play/${gameToSync.fullId}/v6',
+        lichessWSClientQueryParameters(ref.read(preloadedDataProvider).requireValue.sri),
+      );
       WebSocket? socket;
       StreamSubscription<SocketEvent>? streamSubscription;
       try {

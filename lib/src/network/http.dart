@@ -25,7 +25,6 @@ import 'package:http/io_client.dart';
 import 'package:http/retry.dart';
 import 'package:lichess_mobile/src/constants.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
-import 'package:lichess_mobile/src/model/auth/bearer.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/log/http_log_storage.dart';
@@ -310,8 +309,11 @@ final userAgentProvider = Provider<String>((Ref ref) {
 });
 
 /// Creates a user-agent string with the app version, build number, and device info and possibly the user ID if a user is logged in.
+///
+/// It names the app [kAppName], not `Lichess Mobile`: lichess asks API clients to identify
+/// themselves, and reserves the `Lichess Mobile/` prefix for the official app.
 String makeUserAgent(PackageInfo info, BaseDeviceInfo deviceInfo, String sri, LightUser? user) {
-  final base = 'Lichess Mobile/${info.version} as:${user?.id ?? 'anon'} sri:$sri';
+  final base = '$kAppName/${info.version} as:${user?.id ?? 'anon'} sri:$sri';
 
   if (deviceInfo is AndroidDeviceInfo) {
     return '$base os:Android/${deviceInfo.version.release} dev:${deviceInfo.model}';
@@ -519,8 +521,7 @@ class LichessClient(final Client _inner, final Ref _ref) implements Client {
     final authUser = _ref.read(authControllerProvider);
 
     if (authUser != null && !request.headers.containsKey('Authorization')) {
-      final bearer = signBearerToken(authUser.token);
-      request.headers['Authorization'] = 'Bearer $bearer';
+      request.headers['Authorization'] = 'Bearer ${authUser.token}';
     }
     request.headers['User-Agent'] = makeUserAgent(
       _cachedPackageInfo,

@@ -49,7 +49,8 @@ class HomePreferences() extends Notifier<HomePrefs> with SessionPreferencesStora
   }) {
     final enabledCount =
         TimeIncrement.matrixPresets.length -
-        disabledTimeControls.length +
+        // Saved time controls may no longer be presets (Bullet and Blitz were removed).
+        disabledTimeControls.where(TimeIncrement.matrixPresets.contains).length +
         (customButtonEnabled ? 1 : 0);
     if (enabledCount < 1) return Future.value();
     return save(

@@ -4,22 +4,15 @@ import 'package:flutter_riverpod/experimental/mutation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
-import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
-import 'package:lichess_mobile/src/model/message/message_repository.dart';
-import 'package:lichess_mobile/src/model/team/team_providers.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/network/http.dart';
-import 'package:lichess_mobile/src/styles/lichess_icons.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
-import 'package:lichess_mobile/src/utils/navigation.dart';
 import 'package:lichess_mobile/src/view/account/profile_screen.dart';
 import 'package:lichess_mobile/src/view/auth/sign_in_error.dart';
 import 'package:lichess_mobile/src/view/auth/sign_in_options.dart';
-import 'package:lichess_mobile/src/view/message/contacts_screen.dart';
 import 'package:lichess_mobile/src/view/settings/settings_screen.dart';
-import 'package:lichess_mobile/src/view/team/team_updates_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_action_sheet.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
@@ -100,8 +93,6 @@ class _AccountMenuScreenState()
     final authUser = ref.watch(authControllerProvider);
     final kidMode = account.value?.kid ?? false;
     final LightUser? user = account.value?.lightUser ?? authUser?.user;
-    final unreadMessages = ref.watch(unreadMessagesProvider).value?.unread ?? 0;
-    final unreadTeamUpdates = ref.watch(unreadTeamUpdatesCountProvider).value ?? 0;
 
     return PlatformScaffold(
       appBar: PlatformAppBar(
@@ -174,38 +165,6 @@ class _AccountMenuScreenState()
           ],
           ListSection(
             children: [
-              if (user != null && account.hasValue && !kidMode) ...[
-                ListTile(
-                  leading: Badge.count(
-                    isLabelVisible: unreadMessages > 0,
-                    count: unreadMessages,
-                    child: const Icon(Icons.mail_outline),
-                  ),
-                  trailing: Theme.of(context).platform == TargetPlatform.iOS
-                      ? const CupertinoListTileChevron()
-                      : null,
-                  title: Text(context.l10n.inbox),
-                  enabled: isOnline,
-                  onTap: () {
-                    _navigate(context, ContactsScreen.buildRoute());
-                  },
-                ),
-                ListTile(
-                  leading: Badge.count(
-                    isLabelVisible: unreadTeamUpdates > 0,
-                    count: unreadTeamUpdates,
-                    child: const Icon(Icons.groups_outlined),
-                  ),
-                  trailing: Theme.of(context).platform == TargetPlatform.iOS
-                      ? const CupertinoListTileChevron()
-                      : null,
-                  title: Text(context.l10n.teamTeamUpdates),
-                  enabled: isOnline,
-                  onTap: () {
-                    _navigate(context, TeamUpdatesScreen.buildRoute());
-                  },
-                ),
-              ],
               ListTile(
                 leading: const Icon(Icons.settings_outlined),
                 trailing: Theme.of(context).platform == TargetPlatform.iOS
@@ -230,30 +189,6 @@ class _AccountMenuScreenState()
                     onTap: () => _showSignOutConfirmDialog(context, ref),
                   ),
                 },
-            ],
-          ),
-          ListSection(
-            children: [
-              if (Theme.of(context).platform == TargetPlatform.android)
-                ListTile(
-                  leading: Icon(
-                    LichessIcons.patron,
-                    semanticLabel: context.l10n.patronLichessPatron,
-                  ),
-                  title: Text(context.l10n.patronDonate),
-                  enabled: isOnline,
-                  onTap: () => launchUrl(Uri.parse('https://lichess.org/patron')),
-                ),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                title: Text(context.l10n.about),
-                onTap: () {
-                  _navigate(context, AboutScreen.buildRoute());
-                },
-              ),
             ],
           ),
           const SocketPingRatingListTile(),
@@ -327,37 +262,30 @@ class _AccountMenuButtonState() extends ConsumerState<AccountMenuButton> {
   @override
   Widget build(BuildContext context) {
     final account = ref.watch(accountProvider);
-    final kidMode = account.value?.kid ?? false;
-    final unreadMessages = ref.watch(unreadMessagesProvider).value?.unread ?? 0;
     final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
 
     void openMenu() => showAccountMenu(context);
 
     return switch (account) {
-      AsyncData(:final value) => Badge.count(
-        offset: const Offset(-4, 0),
-        count: unreadMessages,
-        isLabelVisible: !kidMode && unreadMessages > 0,
-        child: IconButton(
-          padding: isIOS ? EdgeInsets.zero : null,
-          constraints: isIOS
-              ? const BoxConstraints.tightFor(
-                  width: _cupertinoButtonSize,
-                  height: _cupertinoButtonSize,
-                )
-              : null,
-          tooltip: value == null ? context.l10n.signIn : value.username,
-          icon: value == null
-              ? Icon(
-                  Icons.account_circle_outlined,
-                  size: isIOS ? _cupertinoAnonIconSize : _materialAnonIconSize,
-                )
-              : AccountAvatar(
-                  value,
-                  radius: isIOS ? _cupertinoAvatarRadius : _materialAnonIconSize / 2 + 1,
-                ),
-          onPressed: openMenu,
-        ),
+      AsyncData(:final value) => IconButton(
+        padding: isIOS ? EdgeInsets.zero : null,
+        constraints: isIOS
+            ? const BoxConstraints.tightFor(
+                width: _cupertinoButtonSize,
+                height: _cupertinoButtonSize,
+              )
+            : null,
+        tooltip: value == null ? context.l10n.signIn : value.username,
+        icon: value == null
+            ? Icon(
+                Icons.account_circle_outlined,
+                size: isIOS ? _cupertinoAnonIconSize : _materialAnonIconSize,
+              )
+            : AccountAvatar(
+                value,
+                radius: isIOS ? _cupertinoAvatarRadius : _materialAnonIconSize / 2 + 1,
+              ),
+        onPressed: openMenu,
       ),
       _ => IconButton(
         padding: isIOS ? EdgeInsets.zero : null,
@@ -375,148 +303,5 @@ class _AccountMenuButtonState() extends ConsumerState<AccountMenuButton> {
         onPressed: openMenu,
       ),
     };
-  }
-}
-
-/// About screen with links to various lichess resources and legal information.
-class const AboutScreen({super.key}) extends ConsumerWidget {
-  static Route<void> buildRoute() {
-    return buildScreenRoute(screen: const AboutScreen());
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isOnline = ref.watch(isDeviceOnlineProvider);
-    final packageInfo = ref.read(preloadedDataProvider).requireValue.packageInfo;
-
-    return PlatformScaffold(
-      appBar: PlatformAppBar(title: Text(context.l10n.about), largeTitle: true),
-      body: ListView(
-        children: [
-          ListSection(
-            hasLeading: true,
-            children: [
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.info_outlined),
-                title: Text(context.l10n.aboutX('Lichess')),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/about'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.feedback_outlined),
-                title: Text(context.l10n.mobileFeedbackButton),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/contact'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.article_outlined),
-                title: Text(context.l10n.termsOfService),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/terms-of-service'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: Text(context.l10n.privacyPolicy),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/privacy'));
-                },
-              ),
-            ],
-          ),
-          ListSection(
-            hasLeading: true,
-            children: [
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Symbols.database),
-                title: Text(context.l10n.database),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://database.lichess.org'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.code_outlined),
-                title: Text(context.l10n.sourceCode),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/source'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.bug_report_outlined),
-                title: Text(context.l10n.contribute),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/help/contribute'));
-                },
-              ),
-              ListTile(
-                enabled: isOnline,
-                leading: const Icon(Icons.star_border_outlined),
-                title: Text(context.l10n.thankYou),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  launchUrl(Uri.parse('https://lichess.org/thanks'));
-                },
-              ),
-            ],
-          ),
-          ListSection(
-            hasLeading: true,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.copyright_outlined),
-                title: Text(context.l10n.mobileViewLicenses),
-                trailing: Theme.of(context).platform == TargetPlatform.iOS
-                    ? const CupertinoListTileChevron()
-                    : null,
-                onTap: () {
-                  showLicensePage(
-                    context: context,
-                    applicationName: 'Lichess',
-                    applicationVersion: packageInfo.version,
-                    applicationIcon: const Icon(LichessIcons.logo_lichess),
-                  );
-                },
-              ),
-            ],
-          ),
-          Padding(
-            padding: Styles.bodySectionPadding,
-            child: Text('v${packageInfo.version}', style: TextTheme.of(context).bodySmall),
-          ),
-        ],
-      ),
-    );
   }
 }

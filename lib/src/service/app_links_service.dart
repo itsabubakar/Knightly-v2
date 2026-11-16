@@ -11,6 +11,7 @@ import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
+import 'package:lichess_mobile/src/model/auth/auth_repository.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge_repository.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -36,7 +37,6 @@ import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/practice/practice_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_screen.dart';
 import 'package:lichess_mobile/src/view/study/study_screen.dart';
-import 'package:lichess_mobile/src/view/tournament/tournament_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/view/watch/tv_screen.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
@@ -96,6 +96,15 @@ class AppLinksService(final Ref ref, {AppLinks? appLinks}) {
   }
 
   Future<void> _handleUri(Uri uri, {required bool animated}) async {
+    // The OAuth redirect completes the sign in started in the browser. It may be the link that
+    // cold-started the app, if Android killed it while the browser was open.
+    if (isOAuthCallbackUri(uri)) {
+      // Failures are surfaced by the screens listening to [signInMutation].
+      await signInMutation.run(ref, (tsx) async {
+        await tsx.get(authControllerProvider.notifier).completeSignIn(uri);
+      });
+      return;
+    }
     // File links are handled by the sharing intent logic, so we can ignore them here.
     if (uri.scheme == 'file' || uri.scheme == 'content') {
       return;
@@ -169,11 +178,8 @@ class AppLinksService(final Ref ref, {AppLinks? appLinks}) {
           }
           return [BroadcastRoundScreenLoading.buildRoute(roundId, initialTab: tab)];
         }
-      case 'tournament':
-        final tournamentId = TournamentId(appLinkUri.pathSegments[1]);
-        final playerName = appLinkUri.queryParameters['player'];
-        final playerId = playerName != null ? UserId.fromUserName(playerName) : null;
-        return [TournamentScreen.buildRoute(tournamentId, initialPlayerId: playerId)];
+      // Tournaments are blocked in Knightly: it can't play their games yet, so a pairing would be
+      // lost on time. Tournament links are left to the browser.
       case 'training':
         final id = appLinkUri.pathSegments.getOrNull(1);
         return [

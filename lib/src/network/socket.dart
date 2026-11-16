@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/binding/binding.dart';
 import 'package:lichess_mobile/src/constants.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
-import 'package:lichess_mobile/src/model/auth/bearer.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/common/socket.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
@@ -76,6 +75,14 @@ Uri lichessWSUri(String unencodedPath, [Map<String, String>? queryParameters]) =
         path: unencodedPath,
         queryParameters: queryParameters,
       );
+
+/// The query parameters identifying a non official client to the lichess WebSocket server.
+///
+/// The server reads them from the user agent of the official app only (`Lichess Mobile/`), so
+/// Knightly sends them explicitly:
+/// - `sri`: the socket random identifier of this client;
+/// - `load`: asks for the full game data when connecting to a game socket.
+Map<String, String> lichessWSClientQueryParameters(String sri) => {'sri': sri, 'load': 'true'};
 
 /// A lichess WebSocket client.
 ///
@@ -245,14 +252,14 @@ class SocketClient(
 
     final authUser = getSession();
 
-    final queryParameters = Map<String, String>.of(route.queryParameters);
+    final queryParameters = {...route.queryParameters, ...lichessWSClientQueryParameters(sri)};
     if (version != null) {
       queryParameters['v'] = version.toString();
     }
     final uri = lichessWSUri(route.path, queryParameters.isNotEmpty ? queryParameters : null);
 
     final Map<String, String> headers = authUser != null
-        ? {'Authorization': 'Bearer ${signBearerToken(authUser.token)}'}
+        ? {'Authorization': 'Bearer ${authUser.token}'}
         : {};
     WebSocket.userAgent = makeUserAgent(packageInfo, deviceInfo, sri, authUser?.user);
 
