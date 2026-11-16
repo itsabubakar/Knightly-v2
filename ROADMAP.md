@@ -49,7 +49,7 @@ the phone and the tests passing.
 - [x] Tabs: Home, Play, Train (puzzles and learn), Progress, Profile
 - [x] Home: Today card (games today, results, Rapid rating, streak, level), ongoing games, quick
   play, bookmarked studies
-- [x] Progress: journey card, achievements, game review, ratings, rating history, last 30 games,
+- [x] Progress: journey card, achievements, game review, ratings, rating history,
   puzzle performance
 
 ## Phase 1: Foundation

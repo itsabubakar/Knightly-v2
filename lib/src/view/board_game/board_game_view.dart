@@ -3,18 +3,34 @@ import 'dart:async';
 import 'package:chessground/chessground.dart';
 import 'package:dartchess/dartchess.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lichess_mobile/src/model/account/account_preferences.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
+import 'package:lichess_mobile/src/model/board_api/board_events.dart';
 import 'package:lichess_mobile/src/model/board_api/board_game_controller.dart';
+import 'package:lichess_mobile/src/model/challenge/challenge.dart';
+import 'package:lichess_mobile/src/model/common/game.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/game/game_board_params.dart';
+import 'package:lichess_mobile/src/model/game/material_diff.dart';
+import 'package:lichess_mobile/src/model/settings/board_preferences.dart';
+import 'package:lichess_mobile/src/model/user/user.dart';
+import 'package:lichess_mobile/src/network/http.dart';
+import 'package:lichess_mobile/src/service/create_game_service.dart';
 import 'package:lichess_mobile/src/service/sound_service.dart';
 import 'package:lichess_mobile/src/styles/knightly_theme.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
+import 'package:lichess_mobile/src/view/game/correspondence_clock_widget.dart';
+import 'package:lichess_mobile/src/view/game/game_screen.dart';
+import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
+import 'package:lichess_mobile/src/view/play/play_lichess_ai_sheet.dart';
+import 'package:lichess_mobile/src/view/settings/board_settings_screen.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
 import 'package:lichess_mobile/src/widgets/clock.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/game_layout.dart';
+import 'package:lichess_mobile/src/widgets/material_diff.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/platform_alert_dialog.dart';
 import 'package:lichess_mobile/src/widgets/yes_no_dialog.dart';
@@ -60,6 +76,9 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
   /// The ply shown while browsing the moves, null for the live position.
   int? _viewPly;
   bool _flipped = false;
+
+  /// Whether a rematch is being created.
+  bool _rematching = false;
 
   @override
   void initState() {
@@ -127,6 +146,14 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
+          if (_canRematch(game))
+            PlatformDialogAction(
+              onPressed: () {
+                Navigator.of(context).pop();
+                unawaited(_rematch(game));
+              },
+              child: const Text('Rematch'),
+            ),
           if (game.status != 'aborted' && game.status != 'noStart')
             PlatformDialogAction(
               cupertinoIsDefaultAction: true,
@@ -139,6 +166,84 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
         ],
       ),
     );
+  }
+
+  /// Whether the user can ask for a rematch of [game]: the opponent is the lichess AI or a user.
+  bool _canRematch(BoardGameState game) {
+    final mySide = game.mySide;
+    if (!game.isOver || mySide == null) return false;
+    final opponent = game.player(mySide.opposite);
+    return opponent.aiLevel != null || opponent.id != null;
+  }
+
+  /// A new game with the same settings and the colors swapped: at once against the lichess AI, a
+  /// new challenge to a user (lichess's own rematch is only for the official app).
+  Future<void> _rematch(BoardGameState game) async {
+    final mySide = game.mySide;
+    if (mySide == null || _rematching) return;
+    final opponent = game.player(mySide.opposite);
+    final color = mySide.opposite;
+    final clock = game.clock != null
+        ? (time: game.clock!.initial, increment: game.clock!.increment)
+        : null;
+    final navigator = Navigator.of(context);
+    setState(() => _rematching = true);
+    try {
+      if (opponent.aiLevel case final level?) {
+        final events = ref.read(boardEventsProvider);
+        final id = await ref
+            .read(boardApiRepositoryProvider)
+            .challengeAi(level: level, clock: clock, days: game.daysPerTurn, color: color);
+        final fullId = await startedGameFullId(ref, events, id);
+        if (fullId == null) throw StateError('The game $id was not found.');
+        if (!mounted) return;
+        navigator.pushReplacement(GameScreen.buildRoute(source: ExistingGameSource(fullId)));
+        return;
+      }
+      final request = ChallengeRequest(
+        destUser: LightUser(id: opponent.id!, name: opponent.name, title: opponent.title),
+        variant: game.variant,
+        timeControl: clock != null
+            ? ChallengeTimeControlType.clock
+            : game.daysPerTurn != null
+            ? ChallengeTimeControlType.correspondence
+            : ChallengeTimeControlType.unlimited,
+        clock: clock,
+        days: game.daysPerTurn,
+        rated: game.rated,
+        sideChoice: color == Side.white ? SideChoice.white : SideChoice.black,
+        initialFen: game.variant == .fromPosition ? game.positions.first.fen : null,
+      );
+      if (clock != null) {
+        // The game screen waits for the opponent's answer, then opens the game.
+        final source = UserChallengeSource(request);
+        ref.invalidate(gameScreenLoaderProvider(source));
+        navigator.pushReplacement(GameScreen.buildRoute(source: source));
+        return;
+      }
+      final declined = await ref
+          .read(createGameServiceProvider)
+          .newCorrespondenceChallenge(request);
+      if (!mounted) return;
+      setState(() => _rematching = false);
+      showSnackBar(
+        context,
+        declined != null
+            ? '${opponent.name} declined the rematch.'
+            : 'Rematch sent to ${opponent.name}.',
+        type: declined != null ? SnackBarType.error : SnackBarType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _rematching = false);
+      showSnackBar(
+        context,
+        e is ServerException && e.jsonError?['error'] != null
+            ? 'Could not start a rematch: ${e.jsonError!['error']}'
+            : 'Could not start a rematch.',
+        type: SnackBarType.error,
+      );
+    }
   }
 
   Future<void> _confirm(String title, Future<void> Function() action, String failure) {
@@ -192,13 +297,19 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
               ),
         topTable: BoardGamePlayer(
           game: game,
+          position: position,
           side: bottomSide.opposite,
           timeLeft: game.timeLeft(bottomSide.opposite, now),
         ),
         bottomTable: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            BoardGamePlayer(game: game, side: bottomSide, timeLeft: game.timeLeft(bottomSide, now)),
+            BoardGamePlayer(
+              game: game,
+              position: position,
+              side: bottomSide,
+              timeLeft: game.timeLeft(bottomSide, now),
+            ),
             if (game.isOver)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
@@ -242,6 +353,13 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
         userActionsBar: BottomBar(
           cupertinoGlass: true,
           children: [
+            if (_canRematch(game))
+              BottomBarButton(
+                label: 'Rematch',
+                showLabel: true,
+                icon: Icons.replay,
+                onTap: _rematching ? null : () => _rematch(game),
+              ),
             if (game.isOver)
               BottomBarButton(
                 label: 'Analysis board',
@@ -315,6 +433,11 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
             icon: const Icon(Icons.swap_vert),
             onPressed: () => setState(() => _flipped = !_flipped),
           ),
+          IconButton(
+            tooltip: 'Board settings',
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.of(context).push(BoardSettingsScreen.buildRoute()),
+          ),
         ],
       ),
       body: switch (game) {
@@ -366,16 +489,28 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
   }
 }
 
-/// A player of a Board API game: name, rating and clock.
+/// A player of a Board API game: name, rating (as the "Show ratings" setting allows) and clock.
 class const BoardGamePlayer({
   required final BoardGameState game,
+
+  /// The position on the board, for the material difference.
+  required final Position position,
   required final Side side,
   required final Duration? timeLeft,
   super.key,
-}) extends StatelessWidget {
+}) extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final player = game.player(side);
+    final materialFormat = ref.watch(
+      boardPreferencesProvider.select((prefs) => prefs.materialDifferenceFormat),
+    );
+    // Hidden until the setting is known, rather than flashed.
+    final showRating = switch (ref.watch(showRatingsPrefProvider)) {
+      AsyncData(value: ShowRatings.yes) => true,
+      AsyncData(value: ShowRatings.exceptInGame) => game.isOver,
+      _ => false,
+    };
     final scheme = ColorScheme.of(context);
     final active = !game.isOver && game.sideToMove == side;
     return Padding(
@@ -390,29 +525,47 @@ class const BoardGamePlayer({
           ),
           const SizedBox(width: 8.0),
           Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  if (player.title != null)
-                    TextSpan(
-                      text: '${player.title} ',
-                      style: const TextStyle(color: Flare.orange, fontWeight: FontWeight.w800),
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text.rich(
                   TextSpan(
-                    text: player.name,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    children: [
+                      if (player.title != null)
+                        TextSpan(
+                          text: '${player.title} ',
+                          style: const TextStyle(color: Flare.orange, fontWeight: FontWeight.w800),
+                        ),
+                      TextSpan(
+                        text: player.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      if (showRating && player.rating != null)
+                        TextSpan(
+                          text: ' ${player.rating}${player.provisional ? '?' : ''}',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
+                        ),
+                    ],
                   ),
-                  if (player.rating != null)
-                    TextSpan(
-                      text: ' ${player.rating}${player.provisional ? '?' : ''}',
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
-                ],
-              ),
-              overflow: TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (materialFormat.visible)
+                  MaterialDifferenceDisplay(
+                    materialDiff: MaterialDiff.fromPosition(position).bySide(side),
+                    materialDifferenceFormat: materialFormat,
+                  ),
+              ],
             ),
           ),
-          if (timeLeft != null)
+          if (timeLeft != null && game.daysPerTurn != null)
+            CorrespondenceClock(
+              duration: timeLeft!,
+              active: active && game.clocksRunning,
+              // Restarts from the time left whenever lichess sends it.
+              resetId: game.clockAt.millisecondsSinceEpoch,
+            )
+          else if (timeLeft != null)
             Clock(
               timeLeft: timeLeft!,
               active: active && game.clocksRunning,

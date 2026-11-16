@@ -23,6 +23,17 @@ const kLichessAiClocks = [
   (minutes: 30, increment: 20),
 ];
 
+/// The full id (which the game screen needs) of the game [id] that was just created: it comes with
+/// the game start event of [events], or else from the ongoing games. Null when not found.
+Future<GameFullId?> startedGameFullId(WidgetRef ref, BoardEvents events, GameId id) => events
+    .gameStarted(id, timeout: const Duration(seconds: 8))
+    .then<GameFullId?>((started) => started.fullId)
+    .catchError((Object _) async {
+      ref.invalidate(ongoingGamesProvider);
+      final ongoing = await ref.read(ongoingGamesProvider.future);
+      return ongoing.firstWhereOrNull((game) => game.id == id)?.fullId;
+    });
+
 /// Starts a game against the lichess AI (Stockfish on lichess's servers), played live in Knightly.
 class const PlayLichessAiSheet({required final NavigatorState navigator, super.key})
     extends ConsumerStatefulWidget {
@@ -52,16 +63,7 @@ class _PlayLichessAiSheetState() extends ConsumerState<PlayLichessAiSheet> {
             ),
             color: _color,
           );
-      // The full id (which the game screen needs) comes with the game start event, or else from
-      // the ongoing games.
-      final fullId = await events
-          .gameStarted(id, timeout: const Duration(seconds: 8))
-          .then<GameFullId?>((started) => started.fullId)
-          .catchError((Object _) async {
-            ref.invalidate(ongoingGamesProvider);
-            final ongoing = await ref.read(ongoingGamesProvider.future);
-            return ongoing.firstWhereOrNull((game) => game.id == id)?.fullId;
-          });
+      final fullId = await startedGameFullId(ref, events, id);
       if (!mounted) return;
       if (fullId == null) throw StateError('The game $id was not found.');
       Navigator.of(context).pop();

@@ -75,7 +75,7 @@ sealed class const AnalysisPrefs._()
     enableServerAnalysis: true,
     showEvaluationGauge: true,
     showEngineLines: false,
-    showBestMoveArrow: true,
+    showBestMoveArrow: false,
     showAnnotations: true,
     showPgnComments: true,
     inlineNotation: false,

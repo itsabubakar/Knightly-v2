@@ -103,7 +103,7 @@ sealed class const BoardGameState._() with _$BoardGameState {
   bool get isMyTurn => !isOver && mySide == sideToMove;
 
   /// Lichess starts the clocks after each side's first move.
-  bool get clocksRunning => !isOver && clock != null && moves.length >= 2;
+  bool get clocksRunning => !isOver && (clock != null || daysPerTurn != null) && moves.length >= 2;
 
   /// A game can be aborted until both sides have moved.
   bool get canAbort => !isOver && moves.length < 2;
@@ -302,9 +302,11 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
         ? (positions: current.positions, sans: current.sans, lastMove: current.lastMove)
         : replayMoves(_initial ?? current.positions.first, moves);
     final winner = p('winner').asStringOrNull();
-    final hasClock = current.clock != null;
-    final wtime = p('wtime').asIntOrNull();
-    final btime = p('btime').asIntOrNull();
+    // A correspondence game's time left is in `wtime` and `btime` too; an unlimited one's is the
+    // largest int.
+    final hasClock = current.clock != null || current.daysPerTurn != null;
+    final wtime = p('wtime').asIntOrNull().takeIfTimeLeft();
+    final btime = p('btime').asIntOrNull().takeIfTimeLeft();
     return current.copyWith(
       moves: moves.lock,
       positions: replay.positions,
@@ -392,4 +394,9 @@ class OpenBoardGames() {
   void add(GameId id) => _ids.add(id);
 
   void remove(GameId id) => _ids.remove(id);
+}
+
+extension on int? {
+  /// Null for lichess's "no time limit" value, the largest int.
+  int? takeIfTimeLeft() => this == null || this! >= 2147483647 ? null : this;
 }

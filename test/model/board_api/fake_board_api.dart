@@ -44,24 +44,29 @@ class FakeBoardApi() {
   }
 }
 
-/// A `gameFull` line of a Rapid 10+5 game, white is the test user.
+/// A `gameFull` line of a Rapid 10+5 game, or of a correspondence game with [daysPerTurn]; white is
+/// the test user.
 Map<String, dynamic> gameFullJson({
   String id = 'abcdefgh',
   String moves = '',
   String whiteId = 'testuser',
   String blackId = 'opponent',
   String status = 'started',
+  int? daysPerTurn,
+  int wtime = 600000,
+  int btime = 600000,
 }) => {
   'type': 'gameFull',
   'id': id,
   'rated': true,
   'variant': {'key': 'standard', 'name': 'Standard'},
-  'clock': {'initial': 600000, 'increment': 5000},
-  'speed': 'rapid',
+  if (daysPerTurn == null) 'clock': {'initial': 600000, 'increment': 5000},
+  'daysPerTurn': ?daysPerTurn,
+  'speed': daysPerTurn == null ? 'rapid' : 'correspondence',
   'initialFen': 'startpos',
   'white': {'id': whiteId, 'name': whiteId, 'rating': 1500},
   'black': {'id': blackId, 'name': blackId, 'rating': 1550, 'title': 'FM'},
-  'state': gameStateJson(moves: moves, status: status),
+  'state': gameStateJson(moves: moves, status: status, wtime: wtime, btime: btime),
 };
 
 /// A `gameState` line.
