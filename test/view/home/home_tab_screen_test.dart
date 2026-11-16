@@ -30,17 +30,6 @@ import '../../test_provider_scope.dart';
 
 void main() {
   group('Home online', () {
-    testWidgets('shows Play button', (tester) async {
-      final app = await makeTestProviderScope(tester, child: const Application());
-      await tester.pumpWidget(app);
-
-      // wait for connectivity
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      await tester.pump();
-
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-    });
-
     testWidgets('shows challenge button if has challenges', (tester) async {
       final app = await makeTestProviderScope(
         tester,

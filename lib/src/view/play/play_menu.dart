@@ -29,7 +29,7 @@ class const PlayMenu({
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 24.0),
           child: CreateGameWidget(navigator: navigator),
         ),
         _Section(

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
-import 'package:lichess_mobile/src/view/learn/learn_tab_screen.dart';
 import 'package:lichess_mobile/src/view/more/more_tab_screen.dart';
+import 'package:lichess_mobile/src/view/play/play_tab_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_tab_screen.dart';
 import 'package:lichess_mobile/src/widgets/background.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart'
@@ -173,12 +173,12 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
         switch (tappedTab) {
           case BottomTab.home:
             homeTabInteraction.notifyItemTapped();
-          case BottomTab.puzzles:
-            puzzlesTabInteraction.notifyItemTapped();
-          case BottomTab.learn:
-            learnTabInteraction.notifyItemTapped();
-          case BottomTab.more:
-            moreTabInteraction.notifyItemTapped();
+          case BottomTab.play:
+            playTabInteraction.notifyItemTapped();
+          case BottomTab.train:
+            trainTabInteraction.notifyItemTapped();
+          case BottomTab.profile:
+            profileTabInteraction.notifyItemTapped();
         }
       }
     } else {
@@ -196,20 +196,20 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
         );
       case 1:
         return _MaterialTabView(
-          navigatorKey: puzzlesNavigatorKey,
-          tab: BottomTab.puzzles,
-          builder: (context) => const PuzzleTabScreen(),
+          navigatorKey: playNavigatorKey,
+          tab: BottomTab.play,
+          builder: (context) => const PlayTabScreen(),
         );
       case 2:
         return _MaterialTabView(
-          navigatorKey: learnNavigatorKey,
-          tab: BottomTab.learn,
-          builder: (context) => const LearnTabScreen(),
+          navigatorKey: trainNavigatorKey,
+          tab: BottomTab.train,
+          builder: (context) => const PuzzleTabScreen(),
         );
       case 3:
         return _MaterialTabView(
-          navigatorKey: moreNavigatorKey,
-          tab: BottomTab.more,
+          navigatorKey: profileNavigatorKey,
+          tab: BottomTab.profile,
           builder: (context) => const MoreTabScreen(),
         );
       default:

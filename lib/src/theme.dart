@@ -2,6 +2,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:lichess_mobile/src/constants.dart';
 import 'package:lichess_mobile/src/model/settings/board_preferences.dart';
 import 'package:lichess_mobile/src/model/settings/general_preferences.dart';
+import 'package:lichess_mobile/src/styles/knightly_theme.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/utils/color_palette.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
@@ -191,7 +192,12 @@ ThemeData _makeDefaultTheme(
 
   final textTheme = isIOS ? kCupertinoDefaultTextTheme : null;
 
-  final baseScheme = hasSystemColors ? systemScheme : boardScheme;
+  // Knightly (Android only): the Flare colors replace the system and board colors.
+  final baseScheme = !isIOS
+      ? makeFlareColorScheme(brightness)
+      : hasSystemColors
+      ? systemScheme
+      : boardScheme;
 
   // On iOS light mode, like the iOS grouped lists, cards stand out brighter on a darker background.
   final isIOSLight = isIOS && brightness == .light;
@@ -207,7 +213,7 @@ ThemeData _makeDefaultTheme(
 
   final isAmoled = themeMode == .amoled;
 
-  final finalTheme = theme.copyWith(
+  final lichessTheme = theme.copyWith(
     cupertinoOverrideTheme: _makeCupertinoThemeData(theme.colorScheme, brightness),
     splashFactory: isIOS ? NoSplash.splashFactory : null,
     appBarTheme: _appBarTheme.copyWith(
@@ -259,6 +265,8 @@ ThemeData _makeDefaultTheme(
         ),
     ],
   );
+
+  final finalTheme = isIOS ? lichessTheme : applyFlareComponentThemes(lichessTheme);
 
   if (!isAmoled) return finalTheme;
 

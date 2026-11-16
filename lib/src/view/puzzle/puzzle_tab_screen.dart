@@ -18,6 +18,7 @@ import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/utils/screen.dart';
 import 'package:lichess_mobile/src/utils/string.dart';
 import 'package:lichess_mobile/src/view/account/account_menu.dart';
+import 'package:lichess_mobile/src/view/learn/learn_menu.dart';
 import 'package:lichess_mobile/src/view/puzzle/dashboard_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_history_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_screen.dart';
@@ -71,10 +72,10 @@ class const _PuzzleTabScaffold({required final Widget body}) extends ConsumerWid
         }
       },
       child: PlatformScaffold(
-        appBar: PlatformAppBar(
-          title: Text(context.l10n.puzzles),
+        appBar: const PlatformAppBar(
+          title: Text('Train'),
           centerTitle: false,
-          actions: const [AccountMenuButton()],
+          actions: [AccountMenuButton()],
         ),
         body: body,
       ),
@@ -98,7 +99,7 @@ class _MaterialTabBodyState() extends ConsumerState<_MaterialTabBody> {
       listKey: _listKey,
       removedItemBuilder: _buildMainListRemovedItem,
       initialItems: widget.savedAngles,
-      itemsOffset: 4,
+      itemsOffset: 5,
     );
   }
 
@@ -145,7 +146,7 @@ class _MaterialTabBodyState() extends ConsumerState<_MaterialTabBody> {
                     child: AnimatedList(
                       key: _listKey,
                       initialItemCount: _angles.length,
-                      controller: puzzlesScrollController,
+                      controller: trainScrollController,
                       itemBuilder: buildItem,
                     ),
                   ),
@@ -154,7 +155,7 @@ class _MaterialTabBodyState() extends ConsumerState<_MaterialTabBody> {
               )
             : AnimatedList(
                 key: _listKey,
-                controller: puzzlesScrollController,
+                controller: trainScrollController,
                 initialItemCount: _angles.length,
                 itemBuilder: buildItem,
               ),
@@ -173,13 +174,15 @@ Widget _buildMainListItem(
     case 0:
       return const _PuzzleMenu();
     case 1:
+      return const LearnMenu();
+    case 2:
       return Padding(
         padding: Styles.horizontalBodyPadding,
         child: Text(context.l10n.puzzleDesc, style: Styles.sectionTitle),
       );
-    case 2:
-      return const DailyPuzzle();
     case 3:
+      return const DailyPuzzle();
+    case 4:
       return PuzzleAnglePreview(
         angle: const PuzzleTheme(PuzzleThemeKey.mix),
         onTap: () {

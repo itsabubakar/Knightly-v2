@@ -207,6 +207,9 @@ void main() {
       // wait for the puzzle to load
       await tester.pump(const Duration(milliseconds: 100));
 
+      // The Learn section sits above the puzzle previews: scroll to them.
+      await tester.scrollUntilVisible(find.byType(PuzzleAnglePreview), 200);
+
       expect(find.byType(PuzzleAnglePreview), findsOneWidget);
       expect(find.widgetWithText(PuzzleAnglePreview, 'Healthy mix'), findsOneWidget);
       final chessboard =
@@ -300,6 +303,9 @@ void main() {
       // wait for the puzzles to load
       await tester.pump(const Duration(milliseconds: 100));
 
+      // The Learn section sits above the puzzle previews: scroll to them.
+      await tester.scrollUntilVisible(find.byType(PuzzleAnglePreview), 200);
+
       expect(find.widgetWithText(PuzzleAnglePreview, '2'), findsOneWidget);
     });
 
@@ -338,6 +344,9 @@ void main() {
 
       // wait for the puzzles to load
       await tester.pump(const Duration(milliseconds: 100));
+
+      // The Learn section sits above the puzzle previews: scroll to them.
+      await tester.scrollUntilVisible(find.byType(PuzzleAnglePreview), 200);
 
       expect(find.byType(PuzzleAnglePreview), findsOneWidget);
       expect(find.widgetWithText(PuzzleAnglePreview, '2'), findsNothing);
@@ -595,6 +604,9 @@ void main() {
     );
 
     await tester.pumpWidget(app);
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    // The Learn section sits above the puzzle previews: scroll to the one that syncs the queue.
+    await tester.scrollUntilVisible(find.byType(PuzzleAnglePreview), 200);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     // the tab preview synced the queue once, up to the server cap

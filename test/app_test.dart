@@ -103,8 +103,9 @@ void main() {
         ? findsWidgets
         : findsOneWidget;
     expect(find.text('Home'), labelMatcher);
-    expect(find.text('Puzzles'), labelMatcher);
-    expect(find.text('Learn'), labelMatcher);
+    expect(find.text('Play'), labelMatcher);
+    expect(find.text('Train'), labelMatcher);
+    expect(find.text('Profile'), labelMatcher);
     expect(find.text('Watch'), findsNothing);
   });
 

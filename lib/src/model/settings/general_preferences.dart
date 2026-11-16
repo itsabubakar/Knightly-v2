@@ -102,7 +102,8 @@ sealed class const GeneralPrefs._() with _$GeneralPrefs implements Serializable 
   }) = _GeneralPrefs;
 
   static const defaults = GeneralPrefs(
-    themeMode: BackgroundThemeMode.system,
+    // Knightly is dark by default.
+    themeMode: BackgroundThemeMode.dark,
     isSoundEnabled: true,
     soundTheme: SoundTheme.standard,
     masterVolume: 0.8,

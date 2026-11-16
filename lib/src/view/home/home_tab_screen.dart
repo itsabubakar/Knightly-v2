@@ -40,7 +40,6 @@ import 'package:lichess_mobile/src/view/home/blog_carousel.dart';
 import 'package:lichess_mobile/src/view/home/following_carousel.dart';
 import 'package:lichess_mobile/src/view/home/games_carousel.dart';
 import 'package:lichess_mobile/src/view/play/ongoing_games_screen.dart';
-import 'package:lichess_mobile/src/view/play/play_bottom_sheet.dart';
 import 'package:lichess_mobile/src/view/play/play_menu.dart';
 import 'package:lichess_mobile/src/view/play/quick_game_matrix.dart';
 import 'package:lichess_mobile/src/view/user/challenge_requests_screen.dart';
@@ -408,9 +407,6 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                           onRefresh: () => _refreshData(isOnline: true),
                           child: content,
                         ),
-                  floatingActionButton: widget.editModeEnabled || isTablet
-                      ? null
-                      : const FloatingPlayButton(),
                 ),
               ),
             );

@@ -8,22 +8,23 @@ import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Knightly's tabs, organized around the training loop: play, train, see your progress.
 enum BottomTab() {
   home,
-  puzzles,
-  learn,
-  more;
+  play,
+  train,
+  profile;
 
   String label(AppLocalizations strings) {
     switch (this) {
       case BottomTab.home:
         return strings.mobileHomeTab;
-      case BottomTab.puzzles:
-        return strings.mobilePuzzlesTab;
-      case BottomTab.learn:
-        return strings.learnMenu;
-      case BottomTab.more:
-        return strings.more;
+      case BottomTab.play:
+        return strings.play;
+      case BottomTab.train:
+        return 'Train';
+      case BottomTab.profile:
+        return strings.profile;
     }
   }
 
@@ -31,12 +32,12 @@ enum BottomTab() {
     switch (this) {
       case BottomTab.home:
         return Symbols.home_rounded;
-      case BottomTab.puzzles:
-        return Symbols.extension_rounded;
-      case BottomTab.learn:
-        return Symbols.school_rounded;
-      case BottomTab.more:
-        return Symbols.menu_rounded;
+      case BottomTab.play:
+        return Symbols.chess_pawn_rounded;
+      case BottomTab.train:
+        return Symbols.exercise_rounded;
+      case BottomTab.profile:
+        return Symbols.person_rounded;
     }
   }
 }
@@ -48,12 +49,12 @@ final currentNavigatorKeyProvider = Provider<GlobalKey<NavigatorState>>((ref) {
   switch (currentTab) {
     case BottomTab.home:
       return homeNavigatorKey;
-    case BottomTab.puzzles:
-      return puzzlesNavigatorKey;
-    case BottomTab.learn:
-      return learnNavigatorKey;
-    case BottomTab.more:
-      return moreNavigatorKey;
+    case BottomTab.play:
+      return playNavigatorKey;
+    case BottomTab.train:
+      return trainNavigatorKey;
+    case BottomTab.profile:
+      return profileNavigatorKey;
   }
 });
 
@@ -62,24 +63,24 @@ final currentRootScrollControllerProvider = Provider<ScrollController>((ref) {
   switch (currentTab) {
     case BottomTab.home:
       return homeScrollController;
-    case BottomTab.puzzles:
-      return puzzlesScrollController;
-    case BottomTab.learn:
-      return learnScrollController;
-    case BottomTab.more:
-      return moreScrollController;
+    case BottomTab.play:
+      return playScrollController;
+    case BottomTab.train:
+      return trainScrollController;
+    case BottomTab.profile:
+      return profileScrollController;
   }
 });
 
 final homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
-final puzzlesNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'puzzles');
-final learnNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'learn');
-final moreNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'more');
+final playNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'play');
+final trainNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'train');
+final profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
 
 final homeScrollController = ScrollController(debugLabel: 'HomeScroll');
-final puzzlesScrollController = ScrollController(debugLabel: 'PuzzlesScroll');
-final learnScrollController = ScrollController(debugLabel: 'learnScroll');
-final moreScrollController = ScrollController(debugLabel: 'MoreScroll');
+final playScrollController = ScrollController(debugLabel: 'PlayScroll');
+final trainScrollController = ScrollController(debugLabel: 'TrainScroll');
+final profileScrollController = ScrollController(debugLabel: 'ProfileScroll');
 
 /// A [NavigatorObserver] that keeps track of the routes currently on the
 /// navigator it observes, so that code can query whether a named route is
@@ -486,9 +487,9 @@ class BottomTabInteraction() extends ChangeNotifier {
 }
 
 final homeTabInteraction = BottomTabInteraction();
-final puzzlesTabInteraction = BottomTabInteraction();
-final learnTabInteraction = BottomTabInteraction();
-final moreTabInteraction = BottomTabInteraction();
+final playTabInteraction = BottomTabInteraction();
+final trainTabInteraction = BottomTabInteraction();
+final profileTabInteraction = BottomTabInteraction();
 
 class const MainTabScaffoldProperties({
   required super.child,

@@ -117,7 +117,9 @@ class _BodyState() extends ConsumerState<_Body> {
                 ListSection(
                   hasLeading: true,
                   children: [
-                    if (getSystemCorePalettes() != null)
+                    // Knightly's Flare colors replace the system colors on Android.
+                    if (getSystemCorePalettes() != null &&
+                        Theme.of(context).platform == TargetPlatform.iOS)
                       SwitchSettingTile(
                         leading: const Icon(Icons.colorize_outlined),
                         title: Text(context.l10n.mobileSystemColors),

@@ -53,6 +53,8 @@ class const CreateGameWidget({
                 child: Column(
                   crossAxisAlignment: .stretch,
                   mainAxisSize: .min,
+                  // Space between the label and its picker.
+                  spacing: 6.0,
                   children: [
                     Text(context.l10n.timeControl, style: labelStyle),
                     _PickerButton(
@@ -96,6 +98,8 @@ class const CreateGameWidget({
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
+                  // Space between the label and its picker.
+                  spacing: 6.0,
                   children: [
                     Text(context.l10n.variant, style: labelStyle),
                     _PickerButton(
@@ -127,7 +131,7 @@ class const CreateGameWidget({
           ],
         ),
         if (account != null) ...[
-          const SizedBox(height: 6.0),
+          const SizedBox(height: 16.0),
           Row(
             children: [
               Expanded(
@@ -140,6 +144,8 @@ class const CreateGameWidget({
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
+                    // Space between the label and its picker.
+                    spacing: 6.0,
                     children: [
                       Text(context.l10n.gameMode, style: labelStyle),
                       _PickerButton(
@@ -178,6 +184,8 @@ class const CreateGameWidget({
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
+                    // Space between the label and its picker.
+                    spacing: 6.0,
                     children: [
                       GestureDetector(
                         onTap: canUseRatingRange
@@ -240,6 +248,7 @@ class const CreateGameWidget({
             ],
           ),
         ],
+        const SizedBox(height: 20.0),
         FilledButton(
           // A time control saved before Bullet and Blitz lobby games were removed can't be used.
           onPressed:

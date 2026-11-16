@@ -205,10 +205,10 @@ class _AppState() extends ConsumerState<Application> {
       title: 'lichess.org',
       locale: themeConfig.$5,
       theme: theme.copyWith(
+        // From the app theme (Knightly's navigation bar colors), not the ambient one.
         navigationBarTheme: isIOS
             ? null
-            : NavigationBarTheme.of(context)
-                  .copyWith(height: isShortVerticalScreen(context) ? 60 : null),
+            : theme.navigationBarTheme.copyWith(height: isShortVerticalScreen(context) ? 60 : null),
       ),
       // Packages not yet migrated to `material_ui` and `cupertino_ui` (e.g. liquid_glass_widgets,
       // fl_chart) read the Flutter SDK themes and localizations, which the bridges derive from the

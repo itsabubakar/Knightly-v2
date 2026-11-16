@@ -38,12 +38,7 @@ class const MoreTabScreen({super.key}) extends ConsumerWidget {
       },
       child: PlatformScaffold(
         appBar: PlatformAppBar(
-          title: Theme.of(context).platform == TargetPlatform.iOS
-              ? AppBarLichessTitle(
-                  iconSize:
-                      CupertinoTheme.of(context).textTheme.navLargeTitleTextStyle.fontSize ?? 34,
-                )
-              : const AppBarLichessTitle(),
+          title: Text(context.l10n.profile),
           centerTitle: false,
           actions: const [AccountMenuButton()],
         ),
@@ -62,8 +57,9 @@ class const _Body() extends ConsumerWidget {
     return ListTileTheme.merge(
       iconColor: Theme.of(context).colorScheme.primary,
       child: ListView(
-        controller: moreScrollController,
+        controller: profileScrollController,
         children: [
+          const _AccountSection(),
           ListSection(
             header: SettingsSectionTitle(context.l10n.tools),
             hasLeading: true,
@@ -169,7 +165,6 @@ class const _Body() extends ConsumerWidget {
                 ),
             ],
           ),
-          const _AccountSection(),
           Padding(
             padding: Styles.bodySectionPadding,
             child: LichessMessage(style: TextTheme.of(context).bodyMedium),

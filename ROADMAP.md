@@ -47,10 +47,111 @@ saving settings to the account, saving Storm/Streak scores.
   Firebase config, or Firebase removed), and remove Lichess branding inside the app (Lichess logo
   and name are lichess's trademarks)
 
+## UI rework (current)
+
+Style inspired by ChessFlare's colors (not its artwork): the "Flare" theme.
+
+- [x] Flare theme: dark by default, orange accent `#FE7201`, warm surfaces, rounder cards and bolder
+  buttons (Android only; `lib/src/styles/knightly_theme.dart`)
+- [x] Tabs: Home, Play, Train (puzzles + learn), Profile (account, tools, community)
+- [ ] Home dashboard: streak, level and goals cards, continue (your turn, games to review), quick
+  play; sections appear as their features are built
+- [ ] Progress tab (5th): ratings, rating history, recent form, puzzle performance; later streak,
+  XP, levels, disciplines, achievements, analytics, reports
+- [ ] Polish: pressable cards, colored icon badges, bolder headings, quick pairing tiles, orange
+  board theme, Home header, animations
+
+## Phases
+
+Order agreed on 2026-11-16: the UI rework first, then live play, then the training features. Each
+phase ends with the app working on the phone and the tests passing.
+
+### Phase 1: Live play
+
+Steps 2 to 5 of "Live play (Board API)" above, then unblock tournaments (step 6).
+
+6. [ ] Tournaments back, played through the Board API (test the pairing first)
+
+### Phase 2: Foundation
+
+- [ ] Local database tables for Knightly's own data (tags, XP, streak, study sessions, goals)
+- [ ] Backup: export all Knightly data to a file and import it back (the data lives only on the
+  phone: uninstalling or clearing the app's data loses it)
+- [ ] Bug: "unable to fetch tournament data" on Home, seen only when the debug app is opened without
+  `flutter run` attached (check in a profile or release build)
+- [ ] Bug: profile screen shows "Retry" for a moment before the real data
+
+### Phase 3: Streak
+
+- [ ] Daily streak: a day counts when at least one game is finished, played anywhere (Knightly,
+  official app, website), any speed, rated or casual, correspondence included; read from the
+  lichess game history; days roll over at local midnight
+- [ ] Streak freezes: forgive one missed day; earned from achievements and level ups, not bought
+
+### Phase 4: Game tagging and review
+
+- [ ] Tag moves of finished games (never during a live game: fair play)
+- [ ] Tag list: an editable starter list plus my own tags
+  - Mistakes: hanging piece, missed tactic, calculation error, time trouble, opening mistake,
+    endgame technique, positional error
+  - Good decisions: good move, good plan
+- [ ] Tag suggestions: when the best move arrow is shown and the played move differs (or lichess's
+  computer analysis marks a mistake or blunder), suggest tagging the move
+- [ ] Game review: a "lessons learned" note per game
+- [ ] Filter my games by tag
+
+### Phase 5: Progression
+
+- [ ] Player XP and levels (proposed XP table below, to adjust)
+- [ ] Discipline levels: tactics, strategy, openings, endgames, analysis
+  - puzzle themes count for tactics and endgames, study sessions for their category, tags for
+    their area (e.g. "opening mistake" for openings), game reviews for analysis
+- [ ] Achievements (some award streak freezes)
+
+Proposed XP table:
+
+| Activity | XP |
+|---|---|
+| Move tagged | 5 |
+| Game reviewed (lessons note written) | 20 |
+| Rapid game finished | 15 |
+| Classical game finished | 25 |
+| Correspondence game finished | 25 |
+| Blitz game finished (vs friend or AI) | 5 |
+| Puzzle solved | 2 |
+| 10 minutes of study | 10 |
+| Daily goal completed | 20 |
+| Streak day | 5 (+1 per 7 days of streak, max 15) |
+
+### Phase 6: Study tracker
+
+- [ ] Stopwatch: start and stop while studying
+- [ ] Countdown: set a duration (e.g. 20 minutes) and count down while using the app
+- [ ] Manual entry: log a session afterwards
+- [ ] Each session has a category (tactics, strategy, openings, endgames, analysis)
+
+### Phase 7: Daily goals
+
+- [ ] Set daily training activities (e.g. 1 rapid game, 10 puzzles, 20 minutes of endgames) and
+  check them off automatically
+
+### Phase 8: Weakness analytics
+
+- [ ] Recurring mistakes from tags, and how they change over time
+
+### Phase 9: Monthly reports
+
+- [ ] Summary of the month: activity, quality (accuracy, mistakes per game), improvement
+
+### UI enhancement
+
+- [ ] Waiting for reference screenshots. Likely a Home dashboard (streak, level, today's goals),
+  fitting with phases 3, 5 and 7. Keep all lichess features working.
+
 ## Training
 
 - [ ] Spaced repetition for failed puzzles: puzzles I fail come back for review at growing
-  intervals until I solve them reliably
+  intervals until I solve them reliably (could join phase 5 or 7)
 
 ## Ideas
 
