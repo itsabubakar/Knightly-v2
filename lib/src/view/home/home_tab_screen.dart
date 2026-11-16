@@ -17,6 +17,7 @@ import 'package:lichess_mobile/src/model/challenge/challenges.dart';
 import 'package:lichess_mobile/src/model/correspondence/correspondence_game_storage.dart';
 import 'package:lichess_mobile/src/model/correspondence/offline_correspondence_game.dart';
 import 'package:lichess_mobile/src/model/game/game_history.dart';
+import 'package:lichess_mobile/src/model/progression/progression.dart';
 import 'package:lichess_mobile/src/model/relation/following_user.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
@@ -39,21 +40,23 @@ import 'package:lichess_mobile/src/view/game/offline_correspondence_games_screen
 import 'package:lichess_mobile/src/view/home/blog_carousel.dart';
 import 'package:lichess_mobile/src/view/home/following_carousel.dart';
 import 'package:lichess_mobile/src/view/home/games_carousel.dart';
+import 'package:lichess_mobile/src/view/home/today_card.dart';
 import 'package:lichess_mobile/src/view/play/ongoing_games_screen.dart';
 import 'package:lichess_mobile/src/view/play/play_menu.dart';
 import 'package:lichess_mobile/src/view/play/quick_game_matrix.dart';
+import 'package:lichess_mobile/src/view/progress/celebration_dialog.dart';
+import 'package:lichess_mobile/src/view/study/study_bookmarks_view.dart';
 import 'package:lichess_mobile/src/view/user/challenge_requests_screen.dart';
 import 'package:lichess_mobile/src/view/user/recent_games.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/haptic_refresh_indicator.dart';
+import 'package:lichess_mobile/src/widgets/knightly_message.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
-import 'package:lichess_mobile/src/widgets/misc.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/server_outage_display.dart';
 import 'package:lichess_mobile/src/widgets/shimmer.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Number of cold app starts before hiding the home customization tip.
 const kColdAppStartsHideCustomizationTipThreshold = 5;
@@ -101,6 +104,9 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
   bool wasOnline = true;
   bool hasRefreshed = false;
 
+  /// Whether level-ups and achievements are being celebrated, so that they are shown only once.
+  bool _isCelebrating = false;
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +124,17 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Knightly: celebrates the level-ups and achievements, wherever the user is (the Home tab is
+    // always built).
+    ref.listen(progressionProvider, (_, next) {
+      final celebrations = next.value?.celebrations;
+      if (celebrations == null || celebrations.isEmpty || _isCelebrating) return;
+      _isCelebrating = true;
+      showCelebrations(context, celebrations).whenComplete(() async {
+        await ref.read(progressionProvider.notifier).markCelebrated();
+        _isCelebrating = false;
+      });
+    });
     ref.listen(connectivityChangesProvider, (_, connectivity) {
       // Refresh the data only once if it was offline and is now online
       if (!connectivity.isRefreshing && connectivity.hasValue) {
@@ -188,33 +205,13 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                 if (!widget.editModeEnabled) ...[
                   Padding(
                     padding: Styles.bodySectionPadding,
-                    child: LichessMessage(style: TextTheme.of(context).bodyLarge),
+                    child: KnightlyMessage(style: TextTheme.of(context).bodyLarge),
                   ),
                   const SizedBox(height: 8.0),
                   if (authUser == null) ...[
                     const Center(child: _SignInWidget()),
                     const SizedBox(height: 16.0),
                   ],
-                  if (Theme.of(context).platform != TargetPlatform.iOS &&
-                      (authUser == null || authUser.user.isPatron != true)) ...[
-                    Center(
-                      child: FilledButton.tonal(
-                        onPressed: () {
-                          launchUrl(Uri.parse('https://lichess.org/patron'));
-                        },
-                        child: Text(context.l10n.patronDonate),
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
-                  ],
-                  Center(
-                    child: FilledButton.tonal(
-                      onPressed: () {
-                        launchUrl(Uri.parse('https://lichess.org/about'));
-                      },
-                      child: Text(context.l10n.aboutX('Lichess...')),
-                    ),
-                  ),
                   const _HomeCustomizationTip(),
                 ],
               ];
@@ -256,6 +253,11 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
               widgets = [
                 if (!widget.editModeEnabled) ...[const _HomeCustomizationTip()],
                 if (showOutage) const ServerOutageDisplay(),
+                if (authUser != null && !widget.editModeEnabled)
+                  Padding(
+                    padding: Styles.bodySectionPadding,
+                    child: TodayCard(recentGames: recentGames),
+                  ),
                 if (hasServerContent)
                   _EditableWidget(
                     widget: HomeEditableWidget.perfCards,
@@ -317,18 +319,21 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                         data: (data) => data.isNotEmpty,
                         orElse: () => false,
                       ));
+              // Knightly's dashboard: today, what to continue, then quick play.
               widgets = [
                 if (!widget.editModeEnabled) ...[const _HomeCustomizationTip()],
                 if (showOutage) const ServerOutageDisplay(),
+                if (authUser != null && !widget.editModeEnabled)
+                  Padding(
+                    padding: Styles.bodySectionPadding,
+                    child: TodayCard(recentGames: recentGames),
+                  ),
                 _EditableWidget(
-                  widget: HomeEditableWidget.perfCards,
-                  shouldShow: authUser != null && hasServerContent,
-                  child: const AccountPerfCards(padding: Styles.bodySectionPadding),
-                ),
-                _EditableWidget(
-                  widget: HomeEditableWidget.friends,
-                  shouldShow: authUser != null && hasServerContent && hasFollowing,
-                  child: FollowingCarousel(followingAsync),
+                  widget: HomeEditableWidget.ongoingGames,
+                  shouldShow: hasOngoingGames,
+                  child: hasServerContent
+                      ? _OngoingGamesCarousel(ongoingGames, maxGamesToShow: 20)
+                      : _OfflineCorrespondenceCarousel(offlineCorresGames, maxGamesToShow: 20),
                 ),
                 _EditableWidget(
                   widget: HomeEditableWidget.quickPairing,
@@ -338,12 +343,16 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                     child: QuickGameMatrix(),
                   ),
                 ),
+                if (!widget.editModeEnabled) const BookmarkedStudiesSection(),
                 _EditableWidget(
-                  widget: HomeEditableWidget.ongoingGames,
-                  shouldShow: hasOngoingGames,
-                  child: hasServerContent
-                      ? _OngoingGamesCarousel(ongoingGames, maxGamesToShow: 20)
-                      : _OfflineCorrespondenceCarousel(offlineCorresGames, maxGamesToShow: 20),
+                  widget: HomeEditableWidget.perfCards,
+                  shouldShow: authUser != null && hasServerContent,
+                  child: const AccountPerfCards(padding: Styles.bodySectionPadding),
+                ),
+                _EditableWidget(
+                  widget: HomeEditableWidget.friends,
+                  shouldShow: authUser != null && hasServerContent && hasFollowing,
+                  child: FollowingCarousel(followingAsync),
                 ),
                 if (_worker != null && !isKidMode)
                   _EditableWidget(
@@ -424,6 +433,7 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
         if (isOnline) ref.refresh(accountProvider.future),
         if (isOnline) ref.refresh(ongoingGamesProvider.future),
         if (isOnline) ref.refresh(followingCarouselProvider.future),
+        if (isOnline) ref.read(progressionProvider.notifier).refresh(),
       ]);
     } catch (_) {
       // Refreshing while the server is unavailable is expected to fail. Each

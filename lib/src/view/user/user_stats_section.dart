@@ -42,7 +42,7 @@ class const UserStatsSection({required final User user, required final bool isMe
         child: Column(
           crossAxisAlignment: .stretch,
           children: [
-            RatingPrefAware(child: _RatingHistoryCard(user: user)),
+            RatingPrefAware(child: RatingHistoryCard(user: user)),
             if (hasGames)
               GameResultsCard(
                 total: count.all,
@@ -96,7 +96,7 @@ class const UserStatsSection({required final User user, required final bool isMe
 /// The rating history of the user's most played perfs, then puzzles, in one chart.
 ///
 /// Shows nothing while loading, on error, or if no perf has enough history to draw.
-class const _RatingHistoryCard({required final User user}) extends ConsumerWidget {
+class const RatingHistoryCard({required final User user}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     bool isRated(Perf perf) {

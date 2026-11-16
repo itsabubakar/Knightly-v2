@@ -74,6 +74,11 @@ abstract class LichessBinding() {
   /// This should be called only once before the app starts.
   Future<void> initializeFirebase();
 
+  /// Whether push notifications through Firebase Cloud Messaging are available.
+  ///
+  /// Knightly has no Firebase project (lichess only pushes to its own app), so it skips them.
+  bool get pushNotificationsEnabled => true;
+
   /// Wraps [FirebaseMessaging.instance].
   FirebaseMessaging get firebaseMessaging;
 

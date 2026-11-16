@@ -5,7 +5,9 @@ import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/view/coordinate_training/coordinate_training_screen.dart';
 import 'package:lichess_mobile/src/view/learn/learn_screen.dart';
 import 'package:lichess_mobile/src/view/practice/practice_screen.dart';
+import 'package:lichess_mobile/src/view/study/study_bookmarks_view.dart';
 import 'package:lichess_mobile/src/view/study/study_list_screen.dart';
+import 'package:lichess_mobile/src/view/study_tracker/study_tracker_screen.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +25,12 @@ class const LearnMenu({super.key}) extends StatelessWidget {
       child: ListSection(
         hasLeading: true,
         children: [
+          ListTile(
+            leading: const Icon(Symbols.timer),
+            trailing: chevron,
+            title: const Text('Study timer', style: Styles.callout),
+            onTap: () => Navigator.of(context).push(StudyTrackerScreen.buildRoute()),
+          ),
           ListTile(
             leading: const Icon(Symbols.chess_pawn),
             trailing: chevron,
@@ -47,6 +55,12 @@ class const LearnMenu({super.key}) extends StatelessWidget {
             trailing: chevron,
             title: Text(context.l10n.studyMenu, style: Styles.callout),
             onTap: () => Navigator.of(context).pushHidingTabBar(StudyListScreen.buildRoute()),
+          ),
+          ListTile(
+            leading: const Icon(Symbols.bookmark),
+            trailing: chevron,
+            title: const Text('Bookmarked studies', style: Styles.callout),
+            onTap: () => Navigator.of(context).push(BookmarkedStudiesScreen.buildRoute()),
           ),
         ],
       ),

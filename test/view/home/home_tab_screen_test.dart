@@ -13,6 +13,7 @@ import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
 import 'package:lichess_mobile/src/view/play/quick_game_matrix.dart';
 import 'package:lichess_mobile/src/view/tournament/tournament_list_screen.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
+import 'package:lichess_mobile/src/widgets/knightly_message.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/server_outage_display.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' show GlassButton;
@@ -80,19 +81,18 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('libre, no-ads, open source chess server.', findRichText: true),
-        findsOneWidget,
-      );
+      expect(find.text(KnightlyMessage.text), findsOneWidget);
       expect(find.text('Sign in'), findsOneWidget);
-      expect(find.text('About Lichess...'), findsOneWidget);
+      // Knightly has no About and Donate buttons.
+      expect(find.text('About Lichess...'), findsNothing);
     });
 
     testWidgets('authUser, no played game: do not show welcome screen', (tester) async {
       int nbUserGamesRequests = 0;
       final mockClient = MockClient((request) {
         if (request.url.path == '/api/games/user/testuser') {
-          nbUserGamesRequests++;
+          // Not the XP sync, which asks for the games since its last sync.
+          if (!request.url.queryParameters.containsKey('since')) nbUserGamesRequests++;
           return mockResponse('', 200);
         }
         if (request.url.path == '/tournament/featured') {
@@ -158,7 +158,8 @@ void main() {
       int nbUserGamesRequests = 0;
       final mockClient = MockClient((request) {
         if (request.url.path == '/api/games/user/testuser') {
-          nbUserGamesRequests++;
+          // Not the XP sync, which asks for the games since its last sync.
+          if (!request.url.queryParameters.containsKey('since')) nbUserGamesRequests++;
           return mockResponse(mockUserRecentGameResponse('testUser'), 200);
         }
         if (request.url.path == '/tournament/featured') {

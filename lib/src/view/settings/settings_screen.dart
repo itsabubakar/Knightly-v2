@@ -28,13 +28,11 @@ import 'package:lichess_mobile/src/widgets/adaptive_action_sheet.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_choice_picker.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
-import 'package:lichess_mobile/src/widgets/misc.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/settings.dart';
 import 'package:lichess_mobile/src/widgets/user.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class const SettingsScreen({super.key}) extends ConsumerWidget {
   static Route<dynamic> buildRoute() {
@@ -190,28 +188,7 @@ class const SettingsScreen({super.key}) extends ConsumerWidget {
                   Navigator.of(context).push(AppLogSettingsScreen.buildRoute());
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: Text(context.l10n.mobileRateThisApp),
-                onTap: () async {
-                  final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-                  final launched = await launchUrl(
-                    isAndroid
-                        ? Uri.parse('market://details?id=org.lichess.mobileV2')
-                        : Uri.parse('https://apps.apple.com/us/app/lichess/id1662361230'),
-                    mode: LaunchMode.externalApplication,
-                  );
-                  if (!launched && isAndroid) {
-                    launchUrl(
-                      Uri.parse(
-                        'https://play.google.com/store/apps/details?id=org.lichess.mobileV2',
-                      ),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  }
-                },
-                trailing: const OpenInNewIcon(),
-              ),
+              // Knightly: no "Rate this app" (it would rate the official Lichess app).
             ],
           ),
           if (authUser != null)

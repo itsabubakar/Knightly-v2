@@ -5,6 +5,7 @@ import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
 import 'package:lichess_mobile/src/view/more/more_tab_screen.dart';
 import 'package:lichess_mobile/src/view/play/play_tab_screen.dart';
+import 'package:lichess_mobile/src/view/progress/progress_tab_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_tab_screen.dart';
 import 'package:lichess_mobile/src/widgets/background.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart'
@@ -177,6 +178,8 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
             playTabInteraction.notifyItemTapped();
           case BottomTab.train:
             trainTabInteraction.notifyItemTapped();
+          case BottomTab.progress:
+            progressTabInteraction.notifyItemTapped();
           case BottomTab.profile:
             profileTabInteraction.notifyItemTapped();
         }
@@ -207,6 +210,12 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
           builder: (context) => const PuzzleTabScreen(),
         );
       case 3:
+        return _MaterialTabView(
+          navigatorKey: progressNavigatorKey,
+          tab: BottomTab.progress,
+          builder: (context) => const ProgressTabScreen(),
+        );
+      case 4:
         return _MaterialTabView(
           navigatorKey: profileNavigatorKey,
           tab: BottomTab.profile,

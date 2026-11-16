@@ -8,7 +8,7 @@
         android:largeScreens="true"
         android:xlargeScreens="true"/>
     <application
-        android:label="Lichess"
+        android:label="Knightly"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -19,7 +19,7 @@
           android:value="false" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_stat_lichess_notification" />
+            android:resource="@drawable/ic_stat_knightly" />
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"
             android:value="false" />

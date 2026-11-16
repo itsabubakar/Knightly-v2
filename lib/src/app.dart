@@ -15,6 +15,7 @@ import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/game/game_live_activity.dart';
+import 'package:lichess_mobile/src/model/knightly/knightly_backup.dart';
 import 'package:lichess_mobile/src/model/settings/board_preferences.dart';
 import 'package:lichess_mobile/src/model/settings/general_preferences.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
@@ -22,6 +23,7 @@ import 'package:lichess_mobile/src/service/account_service.dart';
 import 'package:lichess_mobile/src/service/announce_service.dart';
 import 'package:lichess_mobile/src/service/app_links_service.dart';
 import 'package:lichess_mobile/src/service/app_log_service.dart';
+import 'package:lichess_mobile/src/service/board_game_service.dart';
 import 'package:lichess_mobile/src/service/broadcast_service.dart';
 import 'package:lichess_mobile/src/service/challenge_service.dart';
 import 'package:lichess_mobile/src/service/correspondence_service.dart';
@@ -35,6 +37,7 @@ import 'package:lichess_mobile/src/tab_scaffold.dart';
 import 'package:lichess_mobile/src/theme.dart';
 import 'package:lichess_mobile/src/ui_event_coordinator.dart';
 import 'package:lichess_mobile/src/utils/screen.dart';
+import 'package:lichess_mobile/src/view/study_tracker/study_timer_pill.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart' show usePinnedNavBar;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' show GlassNavigationShell;
 import 'package:material_ui/material_ui.dart';
@@ -92,11 +95,15 @@ class _AppState() extends ConsumerState<Application> {
     ref.read(notificationServiceProvider).start();
     ref.read(messageServiceProvider).start();
     ref.read(challengeServiceProvider).start();
+    // Knightly: live games and challenges through the Board API event stream.
+    ref.read(boardGameServiceProvider).start();
     ref.read(accountServiceProvider).start();
     ref.read(correspondenceServiceProvider).start();
     ref.read(quickActionServiceProvider).start();
     ref.read(announceServiceProvider).start();
     ref.read(appLinksServiceProvider).start();
+    // Knightly: a weekly copy of Knightly's own data, kept in the app's folder.
+    unawaited(ref.read(knightlyBackupProvider).autoBackupIfDue());
     ref.read(sharedPgnServiceProvider).start();
     ref.read(broadcastServiceProvider).start();
     ref.read(recapServiceProvider).start();
@@ -202,7 +209,7 @@ class _AppState() extends ConsumerState<Application> {
         CupertinoLocalizationsEo.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      title: 'lichess.org',
+      title: 'Knightly',
       locale: themeConfig.$5,
       theme: theme.copyWith(
         // From the app theme (Knightly's navigation bar colors), not the ambient one.
@@ -225,7 +232,11 @@ class _AppState() extends ConsumerState<Application> {
             // routes on iOS 26.
             child: GlassNavigationShell(
               enabled: usePinnedNavBar(context),
-              child: IconTheme(data: iconTheme, child: child!),
+              // Knightly: the running study timer floats above every screen.
+              child: IconTheme(
+                data: iconTheme,
+                child: Stack(children: [child!, const StudyTimerPill()]),
+              ),
             ),
           ),
         );

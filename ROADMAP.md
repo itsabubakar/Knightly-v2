@@ -1,166 +1,196 @@
 # Knightly Roadmap
 
 Knightly is a personal fork of the Lichess Mobile app, tweaked to support my own chess learning.
+Android only.
 
-Status: `[ ]` planned · `[~]` in progress · `[x]` done
+Status: `[ ]` planned · `[~]` in progress · `[x]` done. Each phase ends with the app working on
+the phone and the tests passing.
 
-## Analysis board
+## Overview
 
-- [x] Best move arrow toggle in the bottom bar (replaces the board size toggle)
+| Phase | What | Status |
+|---|---|---|
+| 0 | Setup: login, fixes, removals, UI rework | done (UI polish left for phase 9) |
+| 1 | Foundation: Knightly database and backup | done |
+| 2 | XP, levels and titles | done |
+| 3 | Achievements | done |
+| 4 | Streak | done |
+| 5 | Move tagging and game review | done |
+| 6 | Study tracker | done |
+| 7 | Live play (Board API) | **built, testing on the phone** |
+| 8 | Daily goals | planned |
+| 9 | Later: disciplines, analytics, reports, polish (rebranding done) | planned |
 
-## Live play (Board API)
+## Phase 0: Setup
 
-Self-built apps can't use the official app's login on lichess.org (`web:mobile` tokens must be
-signed with lichess's private key). Instead: standard lichess OAuth + the public Board API.
+### Login and lichess fixes
+
+- [x] Login with standard lichess OAuth (PKCE, own client id `knightly`, normal scopes), `Knightly/`
+  user agent, websocket `sri`/`load` query params; the pending sign in is kept in secure storage,
+  so it survives Android killing the app while the browser is open
+- [x] Home doesn't use the official-app-only `/api/mobile/home` (each request is made on its own);
+  the friends carousel uses the public `/api/rel/following`; finished games open in analysis;
+  user profiles come from public endpoints (no crosstable for now)
+- [x] Account preferences changed in Knightly are kept on the phone (lichess rejects third-party
+  preference writes)
+- [x] Study bookmarks on the phone replace lichess's study likes (latest 3 on Home, all in Train)
+- [x] Best move arrow toggle in the analysis bottom bar
+
+### Removed (not possible with the API, or not wanted)
+
+- [x] Bullet and Blitz in the lobby (quick pairing and "Create a game": Rapid and slower only)
+- [x] Inbox, team updates, Donate, About, the Watch tab, personal study lists
+- [x] Tournaments until phase 7 (back in phase 7, Rapid and Classical only)
+
+### UI rework
+
+- [x] Flare theme: dark by default, orange accent `#FE7201`, warm surfaces, rounder cards, bolder
+  buttons (inspired by ChessFlare's colors, not its artwork)
+- [x] Tabs: Home, Play, Train (puzzles and learn), Progress, Profile
+- [x] Home: Today card (games today, results, Rapid rating, streak, level), ongoing games, quick
+  play, bookmarked studies
+- [x] Progress: journey card, achievements, game review, ratings, rating history, last 30 games,
+  puzzle performance
+
+## Phase 1: Foundation
+
+- [x] Knightly's own database `knightly.db` (separate from lichess's), versioned migrations
+- [x] Backup & restore (Profile): export a JSON file through the share sheet, restore from a file,
+  automatic weekly backup (4 kept) in the app's folder; covers `knightly.db` and the `knightly.*`
+  settings
+
+## Phase 2: XP, levels and titles
+
+- [x] XP counts from the first sign in to Knightly (not the past), synced from lichess, each
+  activity counted once (see the XP table below)
+- [x] Levels: level 2 at 100 XP, each next level needs 25 XP more; titles from The Newcomer to The
+  Grandmaster; Roman numerals
+- [x] "Your chess journey" card on Progress; level strip and XP today on Home
+
+## Phase 3: Achievements
+
+- [x] 20 achievements (games, puzzles, levels, streak, review, study), each earned once, with XP
+  and streak freezes; a freeze per level-up; at most 3 freezes held
+- [x] Achievements grid on Progress; celebration popup for level-ups and achievements, shown once
+
+## Phase 4: Streak
+
+- [x] A day counts when a game was finished (any speed, rated or casual, correspondence included);
+  a missed day uses a freeze automatically; today doesn't break the streak until it's over
+- [x] Missed days are settled only after a successful sync (never offline)
+- [x] Streak and 7-day strip on Home and Progress; streak achievements live
+
+## Phase 5: Move tagging and game review
+
+- [x] Tag button in the analysis bottom bar, for the moves of the user's own finished games (never
+  live): mistakes and good decisions
+- [x] Suggestion when lichess's computer analysis marks the move as an inaccuracy, mistake or
+  blunder
+- [x] Engine suggestion without server analysis: the analysis board's engine (local or cloud)
+  compares the positions before and after the move (practice mode thresholds), with the best move;
+  "Check with engine" evaluates the position before the move when needed
+- [x] Reviewed games filter by period: all time, 7, 14, 30 days, or a custom date range
+- [x] Game insights on Progress (7, 30, 90 days or custom): games reviewed, games with mistakes,
+  time trouble games, strong games, most frequent tags
+- [x] Editable tag list (starter tags plus your own; rename, remove, restore)
+- [x] "Lessons learned" note per game from the analysis menu
+- [x] Reviewed games screen, filterable by tag; Game review card on Progress; review achievements
+  live
+
+## Phase 6: Study tracker
+
+- [x] Stopwatch and countdown (10 to 60 minutes), with pause; the timer survives the app being
+  closed; a countdown ends on its own ("Session complete"); a stopwatch counts at most 3 hours
+- [x] A timer pill floats above every screen while a session runs (pause, stop, open)
+- [x] Start a timer (countdown or stopwatch) from a bookmarked study (its timer button) or a
+  study's menu: the session keeps the study, shown on the pill, the timer and the sessions
+- [x] Manual entry: log a past session (category, minutes, date)
+- [x] Each session has a category (tactics, strategy, openings, endgames, analysis); sessions list
+  with delete; Study timer in Train
+- [x] Study time and sessions on the journey card; 1 XP per minute (under a minute doesn't count);
+  "Deep Focus" achievement live
+
+## Phase 7: Live play (Board API)
 
 Allowed: Rapid, Classical, Correspondence everywhere; Blitz only vs a friend or the AI. No Bullet.
-No engine/analysis help during live games (fair play: the account can be banned).
+No engine or analysis help during live games (fair play: the account can be banned).
 
-1. [x] Login with standard lichess OAuth (PKCE, own client id, normal scopes), Knightly user
-   agent, websocket `sri`/`load` query params. The pending sign in is kept in secure storage, so it
-   survives Android killing the app while the browser is open.
-2. [ ] Play the lichess AI and challenge a friend (first end-to-end live play)
-3. [ ] Lobby seeks (Rapid/Classical) and incoming/outgoing challenges
-4. [ ] Correspondence games and the ongoing games list
-5. [ ] Puzzles with my account (personal puzzle stream, saving results, dashboard)
+How it works: the user's event stream (`/api/stream/event`) announces game starts and
+challenges; each game is followed through its game stream (`/api/board/game/stream/<id>`) and
+moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is Knightly's own
+(`BoardGameView`); lichess's websocket game code stays for upstream's tests.
 
-Removed: Bullet and Blitz quick pairing tiles, inbox (menus, Home banner, unread badges), team
-updates, Donate, About, the Watch tab, personal study lists (mine, favorites), tournaments (all
-entry points; tournament links open in the browser).
+- [~] Play the lichess AI (Play tab: level 1 to 8, Blitz to Classical, color) and challenge a
+  friend (the challenge is kept alive until accepted or declined)
+- [~] Lobby seeks (quick pairing, "Create a game"; Rapid and Classical) and incoming challenges
+  (notification, accept or decline)
+- [~] Correspondence games and the ongoing games list (open in the Board API game screen)
+- [ ] Puzzles with my account (personal puzzle stream, saving results): check on the phone first
+- [~] Tournaments back (Play tab and links), Rapid and Classical only: joining, then each pairing
+  opens on its own
+- [~] A live game that starts or is going on opens on its own (seek pairing, accepted challenge,
+  tournament pairing, a game left open when the app closed)
+- [ ] Not done yet: premoves, chat, berserk, rematch, move confirmation, the game's sounds on low
+  time; cancelling a correspondence seek (uses the websocket)
 
-Fixed: Home no longer uses the official-app-only `/api/mobile/home` (each request is made on its
-own), the friends carousel uses the public `/api/rel/following`, finished games open in analysis
-(the player socket rejects Knightly's token), user profiles are built from public endpoints
-instead of `/api/mobile/profile` (no crosstable for now), and "Create a game" only allows Rapid and
-slower time controls.
+## Phase 8: Daily goals
 
-Tournaments: joining works and lichess pairs the games right away, so they stay blocked until live
-play works (a paired game would be lost on time).
+- [ ] Set daily training activities (e.g. 1 Rapid game, 10 puzzles, 20 minutes of endgames),
+  checked off automatically
+- [ ] "Today's progress" on Home and Progress; XP per goal completed
 
-Not possible with the API (remove later): notifications list and timeline, push notifications,
-saving settings to the account, saving Storm/Streak scores.
+## Phase 9: Later
 
-## Branding
+- [ ] Discipline levels: tactics, strategy, openings, endgames, analysis (the XP is already
+  recorded per discipline)
+- [ ] Weakness analytics: recurring mistakes from tags, and how they change over time
+- [ ] Monthly reports: activity, quality (accuracy, mistakes per game), improvement
+- [ ] Home review queue: games waiting to be reviewed
+- [ ] Spaced repetition for failed puzzles
+- [ ] UI polish: pressable cards, colored icon badges, bolder headings, quick pairing tiles, orange
+  board theme, animations
+- [x] Rebranding: app name "Knightly", launcher icon (v1's black knight on gold, themed icon
+  layer), splash (brass knight on Flare dark), notification icon, own application id
+  `app.knightly` (installs next to the official Lichess app), Firebase removed (no push: lichess
+  only pushes to its own app; local notifications still work), no "Rate this app"; a Knightly
+  line replaces lichess's "free, libre, open source chess server" message (Home and Profile).
+  "Lichess" stays where it names the service (sign in, opening explorer, server outage)
+- [ ] Bug: "unable to fetch tournament data" on Home, seen only when the debug app runs without
+  `flutter run` attached (check in a release build)
+- [ ] Bug: the profile screen shows "Retry" for a moment before the real data
 
-- [ ] Rebrand the app to Knightly: app name on the home screen (currently "Lichess"), icon and
-  splash screen, own Android application id instead of `org.lichess.mobileV2` (also needs its own
-  Firebase config, or Firebase removed), and remove Lichess branding inside the app (Lichess logo
-  and name are lichess's trademarks)
+## Reference
 
-## UI rework (current)
-
-Style inspired by ChessFlare's colors (not its artwork): the "Flare" theme.
-
-- [x] Flare theme: dark by default, orange accent `#FE7201`, warm surfaces, rounder cards and bolder
-  buttons (Android only; `lib/src/styles/knightly_theme.dart`)
-- [x] Tabs: Home, Play, Train (puzzles + learn), Profile (account, tools, community)
-- [ ] Home dashboard: streak, level and goals cards, continue (your turn, games to review), quick
-  play; sections appear as their features are built
-- [ ] Progress tab (5th): ratings, rating history, recent form, puzzle performance; later streak,
-  XP, levels, disciplines, achievements, analytics, reports
-- [ ] Polish: pressable cards, colored icon badges, bolder headings, quick pairing tiles, orange
-  board theme, Home header, animations
-
-## Phases
-
-Order agreed on 2026-11-16: the UI rework first, then live play, then the training features. Each
-phase ends with the app working on the phone and the tests passing.
-
-### Phase 1: Live play
-
-Steps 2 to 5 of "Live play (Board API)" above, then unblock tournaments (step 6).
-
-6. [ ] Tournaments back, played through the Board API (test the pairing first)
-
-### Phase 2: Foundation
-
-- [ ] Local database tables for Knightly's own data (tags, XP, streak, study sessions, goals)
-- [ ] Backup: export all Knightly data to a file and import it back (the data lives only on the
-  phone: uninstalling or clearing the app's data loses it)
-- [ ] Bug: "unable to fetch tournament data" on Home, seen only when the debug app is opened without
-  `flutter run` attached (check in a profile or release build)
-- [ ] Bug: profile screen shows "Retry" for a moment before the real data
-
-### Phase 3: Streak
-
-- [ ] Daily streak: a day counts when at least one game is finished, played anywhere (Knightly,
-  official app, website), any speed, rated or casual, correspondence included; read from the
-  lichess game history; days roll over at local midnight
-- [ ] Streak freezes: forgive one missed day; earned from achievements and level ups, not bought
-
-### Phase 4: Game tagging and review
-
-- [ ] Tag moves of finished games (never during a live game: fair play)
-- [ ] Tag list: an editable starter list plus my own tags
-  - Mistakes: hanging piece, missed tactic, calculation error, time trouble, opening mistake,
-    endgame technique, positional error
-  - Good decisions: good move, good plan
-- [ ] Tag suggestions: when the best move arrow is shown and the played move differs (or lichess's
-  computer analysis marks a mistake or blunder), suggest tagging the move
-- [ ] Game review: a "lessons learned" note per game
-- [ ] Filter my games by tag
-
-### Phase 5: Progression
-
-- [ ] Player XP and levels (proposed XP table below, to adjust)
-- [ ] Discipline levels: tactics, strategy, openings, endgames, analysis
-  - puzzle themes count for tactics and endgames, study sessions for their category, tags for
-    their area (e.g. "opening mistake" for openings), game reviews for analysis
-- [ ] Achievements (some award streak freezes)
-
-Proposed XP table:
+### XP table
 
 | Activity | XP |
 |---|---|
-| Move tagged | 5 |
-| Game reviewed (lessons note written) | 20 |
 | Rapid game finished | 15 |
-| Classical game finished | 25 |
-| Correspondence game finished | 25 |
-| Blitz game finished (vs friend or AI) | 5 |
+| Classical or Correspondence game finished | 25 |
+| Blitz game finished | 5 |
+| Bullet or UltraBullet game finished | 0 |
 | Puzzle solved | 2 |
-| 10 minutes of study | 10 |
-| Daily goal completed | 20 |
-| Streak day | 5 (+1 per 7 days of streak, max 15) |
+| Move tagged | 5 |
+| Game reviewed (lessons learned note) | 20 |
+| Streak day | 5, +1 per 7 days of streak, max 15 |
+| 10 minutes of study (phase 6) | 10 |
+| Daily goal completed (phase 8) | 20 |
+| Achievement | its own XP |
 
-### Phase 6: Study tracker
+### Lichess API limits
 
-- [ ] Stopwatch: start and stop while studying
-- [ ] Countdown: set a duration (e.g. 20 minutes) and count down while using the app
-- [ ] Manual entry: log a session afterwards
-- [ ] Each session has a category (tactics, strategy, openings, endgames, analysis)
-
-### Phase 7: Daily goals
-
-- [ ] Set daily training activities (e.g. 1 rapid game, 10 puzzles, 20 minutes of endgames) and
-  check them off automatically
-
-### Phase 8: Weakness analytics
-
-- [ ] Recurring mistakes from tags, and how they change over time
-
-### Phase 9: Monthly reports
-
-- [ ] Summary of the month: activity, quality (accuracy, mistakes per game), improvement
-
-### UI enhancement
-
-- [ ] Waiting for reference screenshots. Likely a Home dashboard (streak, level, today's goals),
-  fitting with phases 3, 5 and 7. Keep all lichess features working.
-
-## Training
-
-- [ ] Spaced repetition for failed puzzles: puzzles I fail come back for review at growing
-  intervals until I solve them reliably (could join phase 5 or 7)
-
-## Ideas
-
-- [ ] ...
+- Self-built apps can't use the official app's login on lichess.org: `web:mobile` tokens must be
+  signed with lichess's private key, and the websocket server only accepts those. Knightly uses
+  standard OAuth and the public API instead.
+- Not possible with the public API: reading the inbox, notifications and timeline, push
+  notifications, saving account preferences, saving Storm and Streak scores, Bullet, Blitz in the
+  lobby.
 
 ## Notes
 
-- Run against the real site as a guest:
+- Run against the real site:
   `flutter run -d <device> --dart-define=LICHESS_HOST=lichess.org --dart-define=LICHESS_WS_HOST=socket.lichess.org`
-- Logging in to lichess.org uses Knightly's own OAuth login (see step 1); use Firefox or Chrome as
-  the default browser (Brave doesn't redirect back to the app).
+- Use Firefox or Chrome as the default browser for the login (Brave doesn't redirect back).
+- After a phase, restart the app fully (`R` in `flutter run`, or `q` then `flutter run`): a hot
+  reload doesn't upgrade Knightly's database.
 - Add features in new files where possible, to keep merging upstream changes easy.

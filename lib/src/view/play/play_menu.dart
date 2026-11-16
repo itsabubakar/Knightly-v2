@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/common/perf.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/styles/icon_extensions.dart';
@@ -9,6 +10,8 @@ import 'package:lichess_mobile/src/view/over_the_board/over_the_board_screen.dar
 import 'package:lichess_mobile/src/view/play/correspondence_challenges_screen.dart';
 import 'package:lichess_mobile/src/view/play/create_challenge_bottom_sheet.dart';
 import 'package:lichess_mobile/src/view/play/create_game_widget.dart';
+import 'package:lichess_mobile/src/view/play/play_lichess_ai_sheet.dart';
+import 'package:lichess_mobile/src/view/tournament/tournament_list_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:material_ui/material_ui.dart';
@@ -34,6 +37,25 @@ class const PlayMenu({
         ),
         _Section(
           children: [
+            // Knightly: a live game against Stockfish on lichess, through the Board API.
+            ListTile(
+              enabled:
+                  connectionStatus == LichessConnectionStatus.online &&
+                  ref.watch(authControllerProvider) != null,
+              onTap: () {
+                // Pops the play bottom sheet
+                Navigator.of(context).popUntil((route) => route is! PopupRoute);
+                showAdaptiveBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useRootNavigator: true,
+                  builder: (_) => PlayLichessAiSheet(navigator: navigator),
+                );
+              },
+              leading: const Icon(Icons.smart_toy_outlined),
+              title: const Text('Play the lichess AI'),
+              subtitle: const Text('Live, levels 1 to 8'),
+            ),
             ListTile(
               enabled: connectionStatus == LichessConnectionStatus.online,
               onTap: () {
@@ -48,6 +70,17 @@ class const PlayMenu({
               },
               leading: const Icon(Icons.person),
               title: Text(context.l10n.challengeAFriend),
+            ),
+            ListTile(
+              enabled: connectionStatus == LichessConnectionStatus.online,
+              onTap: () {
+                // Pops the play bottom sheet
+                Navigator.of(context).popUntil((route) => route is! PopupRoute);
+                navigator.push(TournamentListScreen.buildRoute());
+              },
+              leading: const Icon(Icons.emoji_events_outlined),
+              title: Text(context.l10n.tournaments),
+              subtitle: const Text('Rapid and Classical'),
             ),
             ListTile(
               enabled: connectionStatus == LichessConnectionStatus.online,

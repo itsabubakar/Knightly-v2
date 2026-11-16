@@ -17,11 +17,12 @@ import 'package:lichess_mobile/src/view/clock/clock_tool_screen.dart';
 import 'package:lichess_mobile/src/view/explorer/opening_explorer_screen.dart';
 import 'package:lichess_mobile/src/view/more/import_pgn_screen.dart';
 import 'package:lichess_mobile/src/view/relation/friend_screen.dart';
+import 'package:lichess_mobile/src/view/settings/backup_screen.dart';
 import 'package:lichess_mobile/src/view/settings/settings_screen.dart';
 import 'package:lichess_mobile/src/view/user/player_screen.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
+import 'package:lichess_mobile/src/widgets/knightly_message.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
-import 'package:lichess_mobile/src/widgets/misc.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/settings.dart';
 import 'package:material_ui/material_ui.dart';
@@ -167,7 +168,7 @@ class const _Body() extends ConsumerWidget {
           ),
           Padding(
             padding: Styles.bodySectionPadding,
-            child: LichessMessage(style: TextTheme.of(context).bodyMedium),
+            child: KnightlyMessage(style: TextTheme.of(context).bodyMedium),
           ),
         ],
       ),
@@ -205,6 +206,14 @@ class const _AccountSection() extends ConsumerWidget {
           trailing: isIOS ? const CupertinoListTileChevron() : null,
           onTap: () {
             Navigator.of(context).push(SettingsScreen.buildRoute());
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.backup_outlined),
+          title: const Text('Backup & restore'),
+          trailing: isIOS ? const CupertinoListTileChevron() : null,
+          onTap: () {
+            Navigator.of(context).push(BackupScreen.buildRoute());
           },
         ),
       ],

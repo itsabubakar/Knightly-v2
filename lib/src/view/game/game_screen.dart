@@ -1,5 +1,6 @@
 import 'package:dartchess/dartchess.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/common/speed.dart';
@@ -16,6 +17,7 @@ import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
+import 'package:lichess_mobile/src/view/board_game/board_game_view.dart';
 import 'package:lichess_mobile/src/view/game/exported_game_title.dart';
 import 'package:lichess_mobile/src/view/game/game_body.dart';
 import 'package:lichess_mobile/src/view/game/game_common_widgets.dart';
@@ -154,6 +156,10 @@ class _GameScreenState() extends ConsumerState<GameScreen> {
                 : ChallengeDeclineReason.generic.label(context.l10n),
           ),
         );
+      // Knightly plays through the Board API: the game websocket accepts only the official app.
+      case AsyncData(value: GameCreatedState(:final createdGameId))
+          when ref.watch(useBoardApiProvider):
+        return BoardGameView(key: ValueKey(createdGameId), fullId: createdGameId);
       case AsyncData(value: GameCreatedState(:final createdGameId)):
         final isRealTimePlayingGame = ref.watch(
           _isRealTimePlayableGameProvider(createdGameId).select((s) => s.value ?? false),

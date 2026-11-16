@@ -4,12 +4,12 @@ import 'package:dartchess/dartchess.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/constants.dart';
-import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/eval.dart';
 import 'package:lichess_mobile/src/model/engine/evaluation_preferences.dart';
 import 'package:lichess_mobile/src/model/engine/position_evaluator.dart';
 import 'package:lichess_mobile/src/model/settings/board_preferences.dart';
+import 'package:lichess_mobile/src/model/study/study_bookmarks.dart';
 import 'package:lichess_mobile/src/model/study/study_controller.dart';
 import 'package:lichess_mobile/src/model/study/study_preferences.dart';
 import 'package:lichess_mobile/src/model/study/study_repository.dart';
@@ -31,6 +31,7 @@ import 'package:lichess_mobile/src/view/study/study_bottom_bar.dart';
 import 'package:lichess_mobile/src/view/study/study_chapters_sheet.dart';
 import 'package:lichess_mobile/src/view/study/study_gamebook.dart';
 import 'package:lichess_mobile/src/view/study/study_tree_view.dart';
+import 'package:lichess_mobile/src/view/study_tracker/study_timer_setup.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/misc.dart';
@@ -66,7 +67,13 @@ class _StudyScreenState() extends ConsumerState<StudyScreen> {
     if (asyncState case AsyncError(:final error, :final stackTrace)) {
       _logger.severe('Cannot load study:', error, stackTrace);
     }
-    final isLoggedIn = ref.watch(authControllerProvider.select((user) => user != null));
+    final isBookmarked =
+        studyState != null &&
+        ref.watch(
+          studyBookmarksProvider.select(
+            (bookmarks) => bookmarks.any((bookmark) => bookmark.id == studyState.study.id),
+          ),
+        );
 
     return PlatformScaffold(
       extendBodyBehindAppBar: false,
@@ -113,14 +120,24 @@ class _StudyScreenState() extends ConsumerState<StudyScreen> {
               semanticsLabel: 'Study menu',
               icon: const Icon(Icons.more_horiz),
               actions: [
-                if (isLoggedIn)
-                  ContextMenuAction(
-                    icon: studyState.study.liked ? Icons.favorite : Icons.favorite_border,
-                    label: studyState.study.liked ? 'Stop liking' : context.l10n.studyLike,
-                    onPressed: () {
-                      ref.read(studyControllerProvider(widget.options).notifier).toggleLike();
-                    },
+                // Knightly: bookmarks kept on this device replace lichess's likes, which it can't
+                // save nor list.
+                ContextMenuAction(
+                  icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  label: isBookmarked ? 'Remove bookmark' : 'Bookmark',
+                  onPressed: () {
+                    ref.read(studyBookmarksProvider.notifier).toggle(studyState.study);
+                  },
+                ),
+                // Knightly: a study timer (countdown or stopwatch) for this study.
+                ContextMenuAction(
+                  icon: Icons.timer_outlined,
+                  label: 'Start study timer',
+                  onPressed: () => showStartStudyTimerSheet(
+                    context,
+                    study: (id: studyState.study.id, name: studyState.study.name),
                   ),
+                ),
                 ContextMenuAction(
                   icon: Theme.of(context).platform == TargetPlatform.iOS
                       ? Icons.ios_share

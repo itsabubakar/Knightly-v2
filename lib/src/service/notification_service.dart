@@ -95,6 +95,15 @@ class NotificationService(final Ref _ref) {
   /// This method should be called once the app is ready to receive notifications,
   /// and after [LichessBinding.initializeNotifications] has been called.
   Future<void> start() async {
+    // Knightly: no Firebase, so no push notifications (local notifications still work).
+    if (!LichessBinding.instance.pushNotificationsEnabled) {
+      // Firebase used to ask for the notification permission: ask it here instead.
+      await _notificationDisplay
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+      return;
+    }
+
     // Firebase auto-init is disabled at build time (`FirebaseMessagingAutoInitEnabled` in
     // Info.plist, `firebase_messaging_auto_init_enabled` in AndroidManifest.xml) so that nothing
     // is registered with Firebase before the app actually starts its notification service.

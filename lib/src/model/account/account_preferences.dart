@@ -16,6 +16,30 @@ export 'account_pref_types.dart';
 /// If the user is authenticated, the preferences are fetched from the server. If the user is not authenticated, the preferences are fetched from local storage.
 /// Technically an anonymous user does not have account preferences, but we still store them locally for convenience, because some settings are useful even for anonymous users (e.g. piece notation, premoves, etc.).
 
+/// Storage key of the account preferences a signed in user changed in Knightly, as a JSON map of
+/// [AccountPrefState] fields to their values.
+const _kLocalOverridesStorageKey = 'knightly.accountPrefOverrides';
+
+/// The lichess preference keys (as sent to the server) and their [AccountPrefState] fields.
+const _kPrefKeyToField = {
+  'zen': 'zenMode',
+  'pieceNotation': 'pieceNotation',
+  'ratings': 'showRatings',
+  'premove': 'premove',
+  'takeback': 'takeback',
+  'autoQueen': 'autoQueen',
+  'autoThreefold': 'autoThreefold',
+  'moretime': 'moretime',
+  'clockTenths': 'clockTenths',
+  'clockSound': 'clockSound',
+  'confirmResign': 'confirmResign',
+  'submitMove': 'submitMove',
+  'follow': 'follow',
+  'challenge': 'challenge',
+  'message': 'message',
+  'favFed': 'favoriteFederation',
+};
+
 /// A provider that tells if the user wants to see ratings in the app.
 final showRatingsPrefProvider = FutureProvider<ShowRatings>((Ref ref) async {
   final prefs = await ref.watch(accountPreferencesProvider.future);
@@ -62,12 +86,14 @@ class AccountPreferences() extends AsyncNotifier<AccountPrefState> {
       return _fetchLocal();
     }
 
+    AccountPrefState serverPrefs;
     try {
-      return await ref.read(accountRepositoryProvider).getPreferences();
+      serverPrefs = await ref.read(accountRepositoryProvider).getPreferences();
     } catch (e) {
       debugPrint('[AccountPreferences] Error getting account preferences: $e');
-      return defaultAccountPreferences;
+      serverPrefs = defaultAccountPreferences;
     }
+    return _withLocalOverrides(serverPrefs);
   }
 
   Future<void> setZen(Zen value) =>
@@ -119,9 +145,38 @@ class AccountPreferences() extends AsyncNotifier<AccountPrefState> {
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    await ref.read(accountRepositoryProvider).setPreference(key, value);
-    ref.invalidateSelf();
+    // Knightly: lichess lets only the official app write the account preferences
+    // (`POST /api/account/preferences` rejects other apps), so a signed in user's changes are kept on
+    // this device, over the preferences read from lichess.
+    final current = state.value ?? await future;
+    final updated = updateLocal(current);
+    final field = _kPrefKeyToField[key];
+    if (field == null) return;
+    final overrides = _readOverrides()..[field] = updated.toJson()[field];
+    await LichessBinding.instance.sharedPreferences.setString(
+      _kLocalOverridesStorageKey,
+      jsonEncode(overrides),
+    );
+    if (!ref.mounted) return;
+    state = AsyncValue.data(updated);
+  }
+
+  /// [serverPrefs] with the preferences changed on this device instead.
+  AccountPrefState _withLocalOverrides(AccountPrefState serverPrefs) {
+    final overrides = _readOverrides();
+    if (overrides.isEmpty) return serverPrefs;
+    return AccountPrefState.fromJson({...serverPrefs.toJson(), ...overrides});
+  }
+
+  Map<String, dynamic> _readOverrides() {
+    final stored = LichessBinding.instance.sharedPreferences.getString(_kLocalOverridesStorageKey);
+    if (stored == null) return {};
+    try {
+      return jsonDecode(stored) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('[AccountPreferences] Error reading local preference changes: $e');
+      return {};
+    }
   }
 
   Future<void> _saveLocal(AccountPrefState value) async {

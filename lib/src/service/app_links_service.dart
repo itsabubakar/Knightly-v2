@@ -37,6 +37,7 @@ import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/practice/practice_screen.dart';
 import 'package:lichess_mobile/src/view/puzzle/puzzle_screen.dart';
 import 'package:lichess_mobile/src/view/study/study_screen.dart';
+import 'package:lichess_mobile/src/view/tournament/tournament_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/view/watch/tv_screen.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
@@ -178,8 +179,12 @@ class AppLinksService(final Ref ref, {AppLinks? appLinks}) {
           }
           return [BroadcastRoundScreenLoading.buildRoute(roundId, initialTab: tab)];
         }
-      // Tournaments are blocked in Knightly: it can't play their games yet, so a pairing would be
-      // lost on time. Tournament links are left to the browser.
+      // Knightly plays tournament games through the Board API (Rapid and Classical only).
+      case 'tournament':
+        final tournamentId = TournamentId(appLinkUri.pathSegments[1]);
+        final playerName = appLinkUri.queryParameters['player'];
+        final playerId = playerName != null ? UserId.fromUserName(playerName) : null;
+        return [TournamentScreen.buildRoute(tournamentId, initialPlayerId: playerId)];
       case 'training':
         final id = appLinkUri.pathSegments.getOrNull(1);
         return [

@@ -6,6 +6,8 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
+import 'package:lichess_mobile/src/model/board_api/board_events.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge_repository.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -43,13 +45,17 @@ class ChallengeService(final Ref ref) {
   StreamSubscription<(NotificationResponse, LocalNotification)>? _notificationResponseSubscription;
 
   /// The stream of challenge events that are received from the server.
-  static Stream<ChallengesList> get stream => socketGlobalStream.map((event) {
-    if (event.topic != 'challenges') return null;
-    final listPick = pick(event.data).required();
-    final inward = listPick('in').asListOrEmpty(Challenge.fromPick);
-    final outward = listPick('out').asListOrEmpty(Challenge.fromPick);
-    return (inward: inward.lock, outward: outward.lock);
-  }).whereNotNull();
+  static Stream<ChallengesList> get stream => socketGlobalStream
+      .map((event) {
+        if (event.topic != 'challenges') return null;
+        final listPick = pick(event.data).required();
+        final inward = listPick('in').asListOrEmpty(Challenge.fromPick);
+        final outward = listPick('out').asListOrEmpty(Challenge.fromPick);
+        return (inward: inward.lock, outward: outward.lock);
+      })
+      .whereNotNull()
+      // Knightly: the lists fetched when the Board API event stream announces a change.
+      .merge(knightlyChallengeLists.stream);
 
   /// Start listening to events.
   void start() {
@@ -182,7 +188,17 @@ class ChallengeService(final Ref ref) {
 
     final challengeRepo = ref.read(challengeRepositoryProvider);
     await challengeRepo.accept(id);
-    final fullId = await challengeRepo.show(id).then((challenge) => challenge.gameFullId);
+    // Knightly: the full id comes from the event stream's game start when the challenge doesn't
+    // show it (the game has the challenge's id).
+    final fullId =
+        await challengeRepo.show(id).then((challenge) => challenge.gameFullId) ??
+        (ref.read(useBoardApiProvider)
+            ? await ref
+                  .read(boardEventsProvider)
+                  .gameStarted(GameId(id.value), timeout: const Duration(seconds: 10))
+                  .then<GameFullId?>((started) => started.fullId)
+                  .catchError((Object _) => null)
+            : null);
 
     final context = ref.read(currentNavigatorKeyProvider).currentContext;
     if (context == null || !context.mounted) return;

@@ -173,6 +173,9 @@ void main() {
     // wait for the puzzles to load
     await tester.pump(const Duration(milliseconds: 100));
 
+    // The Learn menu (with the study timer) comes first: the daily puzzle is further down.
+    await tester.scrollUntilVisible(find.byType(DailyPuzzle), 200);
+
     expect(find.byType(DailyPuzzle), findsOneWidget);
     expect(find.widgetWithText(DailyPuzzle, 'Puzzle of the day'), findsOneWidget);
     expect(find.widgetWithText(DailyPuzzle, 'Played 93,270 times'), findsOneWidget);

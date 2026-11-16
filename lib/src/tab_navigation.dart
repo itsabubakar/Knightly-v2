@@ -13,6 +13,7 @@ enum BottomTab() {
   home,
   play,
   train,
+  progress,
   profile;
 
   String label(AppLocalizations strings) {
@@ -23,6 +24,8 @@ enum BottomTab() {
         return strings.play;
       case BottomTab.train:
         return 'Train';
+      case BottomTab.progress:
+        return 'Progress';
       case BottomTab.profile:
         return strings.profile;
     }
@@ -36,6 +39,8 @@ enum BottomTab() {
         return Symbols.chess_pawn_rounded;
       case BottomTab.train:
         return Symbols.exercise_rounded;
+      case BottomTab.progress:
+        return Symbols.insights_rounded;
       case BottomTab.profile:
         return Symbols.person_rounded;
     }
@@ -53,6 +58,8 @@ final currentNavigatorKeyProvider = Provider<GlobalKey<NavigatorState>>((ref) {
       return playNavigatorKey;
     case BottomTab.train:
       return trainNavigatorKey;
+    case BottomTab.progress:
+      return progressNavigatorKey;
     case BottomTab.profile:
       return profileNavigatorKey;
   }
@@ -67,6 +74,8 @@ final currentRootScrollControllerProvider = Provider<ScrollController>((ref) {
       return playScrollController;
     case BottomTab.train:
       return trainScrollController;
+    case BottomTab.progress:
+      return progressScrollController;
     case BottomTab.profile:
       return profileScrollController;
   }
@@ -75,11 +84,13 @@ final currentRootScrollControllerProvider = Provider<ScrollController>((ref) {
 final homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
 final playNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'play');
 final trainNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'train');
+final progressNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'progress');
 final profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
 
 final homeScrollController = ScrollController(debugLabel: 'HomeScroll');
 final playScrollController = ScrollController(debugLabel: 'PlayScroll');
 final trainScrollController = ScrollController(debugLabel: 'TrainScroll');
+final progressScrollController = ScrollController(debugLabel: 'ProgressScroll');
 final profileScrollController = ScrollController(debugLabel: 'ProfileScroll');
 
 /// A [NavigatorObserver] that keeps track of the routes currently on the
@@ -489,6 +500,7 @@ class BottomTabInteraction() extends ChangeNotifier {
 final homeTabInteraction = BottomTabInteraction();
 final playTabInteraction = BottomTabInteraction();
 final trainTabInteraction = BottomTabInteraction();
+final progressTabInteraction = BottomTabInteraction();
 final profileTabInteraction = BottomTabInteraction();
 
 class const MainTabScaffoldProperties({

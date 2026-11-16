@@ -136,13 +136,14 @@ class PuzzleRepository(final LichessClient client) {
     );
   }
 
-  Future<IList<PuzzleHistoryEntry>> puzzleActivity(int max, {DateTime? before}) {
+  Future<IList<PuzzleHistoryEntry>> puzzleActivity(int max, {DateTime? before, DateTime? since}) {
     return client.readNdJsonList(
       Uri(
         path: '/api/puzzle/activity',
         queryParameters: {
           'max': max.toString(),
           if (before != null) 'before': before.millisecondsSinceEpoch.toString(),
+          if (since != null) 'since': since.millisecondsSinceEpoch.toString(),
         },
       ),
       mapper: _puzzleActivityFromJson,

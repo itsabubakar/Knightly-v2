@@ -210,19 +210,14 @@ void main() {
       expect(prefs, defaultAccountPreferences);
     });
 
-    test('setting a preference posts it to the server and refetches', () async {
-      final requests = <http.Request>[];
-      var storedZen = 0;
+    test('setting a preference keeps it on the device, over the server value', () async {
+      final posts = <http.Request>[];
       final mockClient = MockClient((request) {
         if (request.method == 'GET' && request.url.path == '/api/account/preferences') {
-          return mockResponse(prefsResponse(zen: storedZen), 200);
+          // The server keeps its own value: Knightly can't write it.
+          return mockResponse(prefsResponse(zen: 0), 200);
         }
-        if (request.method == 'POST' && request.url.path == '/api/account/preferences/zen') {
-          requests.add(request);
-          // The server now reflects the new value on the next fetch.
-          storedZen = Zen.yes.value;
-          return mockResponse('{"ok": true}', 200);
-        }
+        if (request.method == 'POST') posts.add(request);
         return mockResponse('', 404);
       });
 
@@ -237,16 +232,23 @@ void main() {
 
       final initial = await container.read(accountPreferencesProvider.future);
       expect(initial.zenMode, Zen.no);
+      expect(initial.showRatings, ShowRatings.yes);
 
       await container.read(accountPreferencesProvider.notifier).setZen(Zen.yes);
+      await container.read(accountPreferencesProvider.notifier).setShowRatings(ShowRatings.no);
 
-      // The setter posted the form-encoded value to the server.
-      expect(requests, hasLength(1));
-      expect(requests.single.bodyFields['zen'], Zen.yes.toFormData);
-
-      // invalidateSelf triggered a refetch that now returns the updated value.
+      // Nothing is sent to lichess, which rejects preference writes from third-party apps.
+      expect(posts, isEmpty);
       final updated = await container.read(accountPreferencesProvider.future);
       expect(updated.zenMode, Zen.yes);
+      expect(updated.showRatings, ShowRatings.no);
+
+      // The changes survive a refetch of the server preferences.
+      container.invalidate(accountPreferencesProvider);
+      final refetched = await container.read(accountPreferencesProvider.future);
+      expect(refetched.zenMode, Zen.yes);
+      expect(refetched.showRatings, ShowRatings.no);
+      expect(await container.read(showRatingsPrefProvider.future), ShowRatings.no);
     });
   });
 }

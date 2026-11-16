@@ -11,6 +11,7 @@ import 'package:lichess_mobile/src/constants.dart';
 import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/game/game_history.dart';
@@ -1296,7 +1297,11 @@ class _BottomBarState() extends ConsumerState<_BottomBar> {
               icon: widget.state.joined ? Icons.pause : Icons.play_arrow,
               showLabel: true,
               prominent: !widget.state.joined,
-              onTap: widget.state.canJoin
+              onTap:
+                  widget.state.canJoin &&
+                      // Knightly plays through the Board API: Rapid and Classical only.
+                      (!ref.watch(useBoardApiProvider) ||
+                          widget.state.tournament.meta.timeIncrement.isAllowedForLobbySeek)
                   ? () async {
                       final teamBattle = widget.state.tournament.meta.teamBattle;
 

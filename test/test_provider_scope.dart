@@ -12,9 +12,11 @@ import 'package:l10n_esperanto/l10n_esperanto.dart';
 import 'package:lichess_mobile/l10n/l10n.dart';
 import 'package:lichess_mobile/src/constants.dart';
 import 'package:lichess_mobile/src/db/database.dart';
+import 'package:lichess_mobile/src/db/knightly_database.dart';
 import 'package:lichess_mobile/src/model/account/account_preferences.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/auth/auth_storage.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/engine/engine_factory.dart';
 import 'package:lichess_mobile/src/model/engine/thinking_time.dart';
@@ -237,6 +239,17 @@ Future<Widget> makeTestProviderScope(
     }),
     databaseProvider: databaseProvider.overrideWith((ref) async {
       final testDb = await openAppDatabase(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
+      ref.onDispose(testDb.close);
+      return testDb;
+    }),
+    // Lichess's own tests test its websocket games; Knightly's Board API tests override this.
+    useBoardApiProvider: useBoardApiProvider.overrideWithValue(false),
+    knightlyDatabaseProvider: knightlyDatabaseProvider.overrideWith((ref) async {
+      final testDb = await openKnightlyDatabase(
+        databaseFactoryFfiNoIsolate,
+        inMemoryDatabasePath,
+        singleInstance: false,
+      );
       ref.onDispose(testDb.close);
       return testDb;
     }),

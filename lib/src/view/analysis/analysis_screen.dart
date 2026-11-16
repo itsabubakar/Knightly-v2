@@ -8,6 +8,7 @@ import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/engine/evaluation_preferences.dart';
 import 'package:lichess_mobile/src/model/game/exported_game.dart';
 import 'package:lichess_mobile/src/model/game/player.dart';
+import 'package:lichess_mobile/src/model/review/game_review.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/focus_detector.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
@@ -31,9 +32,11 @@ import 'package:lichess_mobile/src/view/engine/engine_lines.dart';
 import 'package:lichess_mobile/src/view/explorer/explorer_view.dart';
 import 'package:lichess_mobile/src/view/game/exported_game_title.dart';
 import 'package:lichess_mobile/src/view/game/game_common_widgets.dart';
+import 'package:lichess_mobile/src/view/review/tag_move_sheet.dart';
 import 'package:lichess_mobile/src/view/study/add_pgn_to_study_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_action_sheet.dart';
+import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_choice_picker.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
@@ -45,6 +48,7 @@ import 'package:lichess_mobile/src/widgets/platform_context_menu_button.dart';
 import 'package:lichess_mobile/src/widgets/user.dart';
 import 'package:lichess_mobile/src/widgets/variant_app_bar_title.dart';
 import 'package:logging/logging.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -468,6 +472,18 @@ class const _BottomBar({
       analysisPreferencesProvider.select((prefs) => prefs.showBestMoveArrow),
     );
 
+    // Knightly: the moves of the user's own finished games can be tagged (an archived game is
+    // finished: no tagging during a live game).
+    final authUser = ref.watch(authControllerProvider);
+    final archivedGame = analysisState.archivedGame;
+    final mySide = authUser != null ? archivedGame?.playerSideOf(authUser.user.id) : null;
+    final san = analysisState.currentNode.sanMove?.san;
+    final ply = analysisState.currentPosition.ply;
+    final canTag = archivedGame != null && mySide != null && analysisState.isOnMainline;
+    final isTagged =
+        canTag &&
+        (ref.watch(gameReviewProvider(archivedGame.id)).value?.tagsAt(ply).isNotEmpty ?? false);
+
     return BottomBar(
       cupertinoGlass: true,
       children: [
@@ -488,6 +504,27 @@ class const _BottomBar({
                 highlighted: showBestMoveArrow,
                 onTap: () =>
                     ref.read(analysisPreferencesProvider.notifier).toggleShowBestMoveArrow(),
+              ),
+            if (canTag)
+              BottomBarButton(
+                key: const ValueKey('tag-move'),
+                label: 'Tag move',
+                icon: Symbols.sell,
+                highlighted: isTagged,
+                onTap: san == null
+                    ? null
+                    : () => showAdaptiveBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => TagMoveSheet(
+                          info: reviewedGameInfo(context, archivedGame, mySide),
+                          ply: ply,
+                          san: san,
+                          options: options,
+                          path: analysisState.currentPath,
+                          verdict: analysisVerdict(analysisState.currentNode.nags),
+                        ),
+                      ),
               ),
           ],
         ),
@@ -555,6 +592,12 @@ class const _BottomBar({
           makeLabel: (context) => Text(context.l10n.flipBoard),
           onPressed: () => ref.read(analysisControllerProvider(options).notifier).toggleBoard(),
         ),
+        if (analysisState.archivedGame case final game? when mySide != null)
+          BottomSheetAction(
+            makeLabel: (context) => const Text('Lessons learned'),
+            onPressed: () =>
+                showReviewNoteDialog(context, ref, reviewedGameInfo(context, game, mySide)),
+          ),
         if (options case Standalone()) ...[
           BottomSheetAction(
             makeLabel: (context) => Text(context.l10n.clearLocalData),

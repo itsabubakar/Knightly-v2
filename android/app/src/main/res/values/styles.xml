@@ -2,13 +2,13 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Shim in the system UI overrides -->
     <style name="SplashTheme.NightAdjusted" parent="Theme.SplashScreen">
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
     </style>
 
     <style name="SplashTheme" parent="SplashTheme.NightAdjusted">
         <item name="windowSplashScreenBackground">@color/bg_splash</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/animated_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/knightly_splash</item>
         <item name="postSplashScreenTheme">@style/NormalTheme</item>
     </style>
 

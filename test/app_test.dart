@@ -11,6 +11,7 @@ import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/tab_scaffold.dart';
 import 'package:lichess_mobile/src/view/home/home_tab_screen.dart';
+import 'package:lichess_mobile/src/widgets/knightly_message.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'model/auth/fake_auth_storage.dart';
@@ -76,13 +77,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     // should see welcome message
-    expect(
-      find.text(
-        'Lichess is a free (really), libre, no-ads, open source chess server.',
-        findRichText: true,
-      ),
-      findsOneWidget,
-    );
+    expect(find.text(KnightlyMessage.text), findsOneWidget);
 
     // should have made a request to test the token
     expect(tokenTestRequests, 1);
@@ -105,6 +100,7 @@ void main() {
     expect(find.text('Home'), labelMatcher);
     expect(find.text('Play'), labelMatcher);
     expect(find.text('Train'), labelMatcher);
+    expect(find.text('Progress'), labelMatcher);
     expect(find.text('Profile'), labelMatcher);
     expect(find.text('Watch'), findsNothing);
   });

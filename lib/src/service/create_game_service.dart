@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:deep_pick/deep_pick.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/account_repository.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge_repository.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -12,15 +13,16 @@ import 'package:lichess_mobile/src/model/lobby/game_seek.dart';
 import 'package:lichess_mobile/src/model/lobby/lobby_repository.dart';
 import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/network/socket.dart';
+import 'package:lichess_mobile/src/service/board_api_create_game_service.dart';
 import 'package:logging/logging.dart';
 
 /// A provider for the [CreateGameService].
 final createGameServiceProvider = Provider.autoDispose<CreateGameService>((Ref ref) {
-  final service = CreateGameService(
-    Logger('CreateGameService'),
-    ref: ref,
-    sri: ref.read(preloadedDataProvider).requireValue.sri,
-  );
+  final sri = ref.read(preloadedDataProvider).requireValue.sri;
+  // Knightly creates games through the Board API (the websockets accept only the official app).
+  final service = ref.watch(useBoardApiProvider)
+      ? BoardApiCreateGameService(Logger('BoardApiCreateGameService'), ref: ref, sri: sri)
+      : CreateGameService(Logger('CreateGameService'), ref: ref, sri: sri);
   ref.onDispose(() {
     service.dispose();
   });
