@@ -126,6 +126,38 @@ sealed class const BoardGameState._() with _$BoardGameState {
 
   BoardPlayer player(Side side) => side == Side.white ? white : black;
 
+  /// A correspondence game: days per turn, or no time limit at all.
+  bool get isCorrespondence => clock == null;
+
+  /// The moves as PGN, from the starting position (given as a FEN when it's not the usual one).
+  String get pgn {
+    final initial = positions.first;
+    final standardStart = initial.fen == variant.initialPosition.fen;
+    final buffer = StringBuffer()
+      ..writeln('[White "${white.name}"]')
+      ..writeln('[Black "${black.name}"]');
+    if (!standardStart) {
+      buffer
+        ..writeln('[FEN "${initial.fen}"]')
+        ..writeln('[SetUp "1"]');
+    }
+    buffer.writeln();
+    var moveNumber = initial.fullmoves;
+    var turn = initial.turn;
+    for (var i = 0; i < sans.length; i++) {
+      if (turn == Side.white) {
+        buffer.write('$moveNumber. ');
+      } else if (i == 0) {
+        buffer.write('$moveNumber... ');
+      }
+      buffer.write('${sans[i]} ');
+      if (turn == Side.black) moveNumber++;
+      turn = turn.opposite;
+    }
+    buffer.write('*');
+    return buffer.toString();
+  }
+
   /// The time left of [side], counting down while it's its turn.
   Duration? timeLeft(Side side, DateTime now) {
     final time = side == Side.white ? whiteTime : blackTime;

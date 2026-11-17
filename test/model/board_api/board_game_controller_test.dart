@@ -60,6 +60,15 @@ void main() {
       expect(game.clock?.increment, const Duration(seconds: 5));
     });
 
+    test('the moves as PGN', () async {
+      final container = await makeBoardContainer();
+      final game = await load(container, gameFullJson(moves: 'e2e4 e7e5 g1f3'));
+
+      expect(game.pgn, contains('[White "testuser"]'));
+      expect(game.pgn, contains('1. e4 e5 2. Nf3 *'));
+      expect(game.pgn, isNot(contains('FEN')));
+    });
+
     test('a move shows at once, is sent to lichess, then confirmed', () async {
       final container = await makeBoardContainer();
       await load(container, gameFullJson(moves: 'e2e4 e7e5'));

@@ -8,6 +8,7 @@ import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/board_api/board_events.dart';
 import 'package:lichess_mobile/src/model/board_api/board_game_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/game_notes.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge.dart';
 import 'package:lichess_mobile/src/model/common/game.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -19,6 +20,7 @@ import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/service/create_game_service.dart';
 import 'package:lichess_mobile/src/service/sound_service.dart';
 import 'package:lichess_mobile/src/styles/knightly_theme.dart';
+import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
 import 'package:lichess_mobile/src/view/game/correspondence_clock_widget.dart';
@@ -26,6 +28,8 @@ import 'package:lichess_mobile/src/view/game/game_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/play/play_lichess_ai_sheet.dart';
 import 'package:lichess_mobile/src/view/settings/board_settings_screen.dart';
+import 'package:lichess_mobile/src/view/user/user_screen.dart';
+import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
 import 'package:lichess_mobile/src/widgets/clock.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
@@ -164,6 +168,23 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
               child: const Text('Analysis board'),
             ),
         ],
+      ),
+    );
+  }
+
+  /// The analysis board of a correspondence game going on: the moves and the opening explorer, no
+  /// engine (lichess doesn't allow one during a game).
+  void _openCorrespondenceAnalysis(BoardGameState game) {
+    Navigator.of(context).push(
+      AnalysisScreen.buildRoute(
+        AnalysisOptions.pgn(
+          id: _id,
+          orientation: game.mySide ?? Side.white,
+          pgn: game.pgn,
+          variant: game.variant,
+          isComputerAnalysisAllowed: false,
+          initialMoveCursor: game.sans.length,
+        ),
       ),
     );
   }
@@ -433,6 +454,22 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
             icon: const Icon(Icons.swap_vert),
             onPressed: () => setState(() => _flipped = !_flipped),
           ),
+          if (value != null && value.isCorrespondence && value.mySide != null && !value.isOver) ...[
+            IconButton(
+              tooltip: 'Analysis board',
+              icon: const Icon(Icons.biotech_outlined),
+              onPressed: () => _openCorrespondenceAnalysis(value),
+            ),
+            IconButton(
+              tooltip: 'Notes',
+              icon: const Icon(Icons.edit_note),
+              onPressed: () => showAdaptiveBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => BoardGameNotesSheet(gameId: _id),
+              ),
+            ),
+          ],
           IconButton(
             tooltip: 'Board settings',
             icon: const Icon(Icons.settings),
@@ -513,6 +550,7 @@ class const BoardGamePlayer({
     };
     final scheme = ColorScheme.of(context);
     final active = !game.isOver && game.sideToMove == side;
+    final userId = player.id;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       child: Row(
@@ -529,26 +567,39 @@ class const BoardGamePlayer({
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      if (player.title != null)
-                        TextSpan(
-                          text: '${player.title} ',
-                          style: const TextStyle(color: Flare.orange, fontWeight: FontWeight.w800),
+                GestureDetector(
+                  // Opens the player's profile.
+                  onTap: userId == null
+                      ? null
+                      : () => Navigator.of(context).push(
+                          UserScreen.buildRoute(
+                            LightUser(id: userId, name: player.name, title: player.title),
+                          ),
                         ),
-                      TextSpan(
-                        text: player.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      if (showRating && player.rating != null)
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        if (player.title != null)
+                          TextSpan(
+                            text: '${player.title} ',
+                            style: const TextStyle(
+                              color: Flare.orange,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         TextSpan(
-                          text: ' ${player.rating}${player.provisional ? '?' : ''}',
-                          style: TextStyle(color: scheme.onSurfaceVariant),
+                          text: player.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                    ],
+                        if (showRating && player.rating != null)
+                          TextSpan(
+                            text: ' ${player.rating}${player.provisional ? '?' : ''}',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
                 if (materialFormat.visible)
                   MaterialDifferenceDisplay(
@@ -601,6 +652,59 @@ class const BoardGameOffer({
           TextButton(onPressed: onDecline, child: const Text('Decline')),
           FilledButton(onPressed: onAccept, child: const Text('Accept')),
         ],
+      ),
+    );
+  }
+}
+
+/// The user's private notes on a game, saved on the phone as they're typed.
+class const BoardGameNotesSheet({required final GameId gameId, super.key}) extends StatefulWidget {
+  @override
+  State<BoardGameNotesSheet> createState() => _BoardGameNotesSheetState();
+}
+
+class _BoardGameNotesSheetState() extends State<BoardGameNotesSheet> {
+  late final _controller = TextEditingController(text: readGameNote(widget.gameId));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Padding(
+          padding: Styles.bodyPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Notes', style: Styles.title),
+              const SizedBox(height: 4.0),
+              Text(
+                'Only you see them; they stay on this phone.',
+                style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
+              ),
+              const SizedBox(height: 12.0),
+              TextField(
+                controller: _controller,
+                autofocus: _controller.text.isEmpty,
+                minLines: 5,
+                maxLines: 12,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Plans, ideas, what to watch for...',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (text) => writeGameNote(widget.gameId, text),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

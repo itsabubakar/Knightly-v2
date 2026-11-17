@@ -1,13 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lichess_mobile/src/model/account/account_preferences.dart';
+import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/board_api/board_api.dart';
+import 'package:lichess_mobile/src/model/board_api/game_notes.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/network/http.dart';
+import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
 import 'package:lichess_mobile/src/view/board_game/board_game_view.dart';
 import 'package:lichess_mobile/src/view/game/correspondence_clock_widget.dart';
 import 'package:lichess_mobile/src/view/game/game_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/settings/board_settings_screen.dart';
+import 'package:lichess_mobile/src/view/user/user_screen.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
 import 'package:lichess_mobile/src/widgets/material_diff.dart';
 import 'package:lichess_mobile/src/widgets/platform_alert_dialog.dart';
@@ -104,6 +108,49 @@ void main() {
     await tester.tap(find.byTooltip('Board settings'));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
     expect(find.byType(BoardSettingsScreen), findsOneWidget);
+    await closeGame(tester);
+  });
+
+  testWidgets("tapping a player's name opens their profile", (tester) async {
+    await openGame(tester);
+    await tester.tap(find.textContaining('opponent', findRichText: true));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(UserScreen), findsOneWidget);
+    await closeGame(tester);
+  });
+
+  testWidgets('a real-time game has no analysis board or notes while it goes on', (tester) async {
+    await openGame(tester);
+    expect(find.byTooltip('Analysis board'), findsNothing);
+    expect(find.byTooltip('Notes'), findsNothing);
+    await closeGame(tester);
+  });
+
+  testWidgets('a correspondence game has an analysis board without engine', (tester) async {
+    await openGame(tester, gameFull: gameFullJson(moves: 'e2e4 e7e5', daysPerTurn: 3));
+    await tester.tap(find.byTooltip('Analysis board'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(AnalysisScreen), findsOneWidget);
+    final screen = tester.widget<AnalysisScreen>(find.byType(AnalysisScreen));
+    expect(screen.options, isA<Pgn>().having((o) => o.isComputerAnalysisAllowed, 'engine', false));
+    await closeGame(tester);
+  });
+
+  testWidgets('the notes of a correspondence game are kept', (tester) async {
+    await openGame(tester, gameFull: gameFullJson(moves: 'e2e4 e7e5', daysPerTurn: 3));
+    await tester.tap(find.byTooltip('Notes'));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.enterText(find.byType(TextField), 'Push the f pawn');
+    expect(readGameNote(const GameId('abcdefgh')), 'Push the f pawn');
+
+    // Closed and opened again.
+    Navigator.of(tester.element(find.byType(TextField))).pop();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byTooltip('Notes'));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Push the f pawn'), findsOneWidget);
     await closeGame(tester);
   });
 
