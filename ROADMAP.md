@@ -133,6 +133,30 @@ moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is K
 - [ ] Not done yet: premoves, chat, berserk, rematch, move confirmation, the game's sounds on low
   time; cancelling a correspondence seek (uses the websocket)
 
+### Phase 7b: game screen and analysis (decided 2026-11-18; built, testing on the phone)
+
+- [~] Takebacks follow the "Takeback" setting: no button when set to never (or in rated games when
+  casual only); the opponent's proposals are then declined on their own (lichess still has the
+  account's old setting: Knightly can't change it)
+- [~] Holding previous or next move goes through the moves
+- [~] Inbox and every message action open lichess.org in the browser (the API can't read the inbox)
+- [~] Rematch offers (they come as challenges) shown in the game: a bar under the board for a
+  rematch of this game (accept, decline), a challenges icon with a count for the others
+- [~] Chat in every game: icon with an unread badge, a sheet with the messages, lichess's quick
+  phrases; off in kid mode
+- [~] The end of game popup leads with the XP: what the game gave and why, the level bar, the
+  streak, a level up; the XP counts at once (the sync later doesn't count it twice)
+- [~] Comments on moves (long press, "Comment"), only for games (finished, and correspondence
+  games going on): saved on the phone with the side lines, in the copied PGN; separate from the
+  computer analysis comments
+- [~] Knightly's computer analysis instead of lichess's "Request a computer analysis" (only the
+  official app can ask for it): a quick pass at once, then a deep one in the background that
+  refines it; inaccuracy, mistake, blunder (with the best line and lichess's comments), the
+  graph, accuracy; saved on the phone; any game. lichess's own analysis shows when it exists.
+  "Learn from your mistakes" works from it
+- [~] The debug build has its own sign in link (`app.knightly.debug`), so it can't take the
+  release app's sign in
+
 ## Phase 8: Daily goals
 
 - [ ] Set daily training activities (e.g. 1 Rapid game, 10 puzzles, 20 minutes of endgames),
@@ -169,6 +193,7 @@ moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is K
 | Classical or Correspondence game finished | 25 |
 | Blitz game finished | 5 |
 | Bullet or UltraBullet game finished | 0 |
+| Game length (from phase 7b, new games only) | the game's XP is ×0 under 10 moves, grows to ×1 at 30 moves and ×1.5 at 60 (max); win, draw and loss alike |
 | Puzzle solved | 2 |
 | Move tagged | 5 |
 | Game reviewed (lessons learned note) | 20 |

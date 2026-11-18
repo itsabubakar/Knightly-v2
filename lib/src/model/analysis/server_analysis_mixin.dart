@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/common/eval.dart';
 import 'package:lichess_mobile/src/model/common/node.dart';
+import 'package:lichess_mobile/src/model/common/uci.dart';
 import 'package:lichess_mobile/src/model/game/game_socket_events.dart';
 import 'package:lichess_mobile/src/service/server_analysis_service.dart';
 import 'package:lichess_mobile/src/utils/riverpod.dart';
@@ -57,9 +58,23 @@ mixin ServerAnalysisMixin<T extends ServerAnalysisMixinState> on AnyNotifier<Asy
 
   Future<void> onServerAnalysisEvent(ServerEvalEvent event);
 
+  /// Whether to take in [event]; Knightly's deep pass sends updates after the analysis is complete.
+  @protected
+  bool acceptsAnalysisEvent(ServerEvalEvent event) => true;
+
+  /// The path the user is at, kept when Knightly's analysis replaces its earlier version.
+  @protected
+  UciPath? get pathKeptOnAnalysisUpdate => null;
+
   Future<void> _onServerAnalysisEvent() async {
     if (ref.read(serverAnalysisServiceProvider).lastAnalysisEvent.value
         case (final source, final event) when source == state.value?.serverAnalysisSource) {
+      if (!acceptsAnalysisEvent(event)) return;
+      // Knightly's own analysis (made on the phone) is sent whole each time: what it said before is
+      // replaced, the user's moves and comments are not.
+      if (event.tree['knightly'] == true) {
+        ServerAnalysisService.clearComputerAnalysis(positionTree, keep: pathKeptOnAnalysisUpdate);
+      }
       ServerAnalysisService.mergeOngoingAnalysis(positionTree, event.tree);
       await onServerAnalysisEvent(event);
     }

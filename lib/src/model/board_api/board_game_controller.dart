@@ -5,6 +5,7 @@ import 'package:deep_pick/deep_pick.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:lichess_mobile/src/model/account/account_preferences.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
@@ -100,6 +101,9 @@ sealed class const BoardGameState._() with _$BoardGameState {
 
   bool get isOver => !_ongoingStatuses.contains(status);
 
+  /// Whether the game was played (not aborted, nor never started): it counts.
+  bool get wasPlayed => isOver && status != 'aborted' && status != 'noStart';
+
   bool get isMyTurn => !isOver && mySide == sideToMove;
 
   /// Lichess starts the clocks after each side's first move.
@@ -125,6 +129,13 @@ sealed class const BoardGameState._() with _$BoardGameState {
   bool get isAgainstAi => white.aiLevel != null || black.aiLevel != null;
 
   BoardPlayer player(Side side) => side == Side.white ? white : black;
+
+  /// Whether the user's "Takeback" setting [pref] allows takebacks in this game.
+  bool takebacksAllowed(Takeback pref) => switch (pref) {
+    Takeback.always => true,
+    Takeback.casual => !rated,
+    Takeback.never => false,
+  };
 
   /// A correspondence game: days per turn, or no time limit at all.
   bool get isCorrespondence => clock == null;
@@ -254,7 +265,8 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
     final BoardGameState? next = switch (json['type']) {
       'gameFull' => _fromGameFull(json),
       'gameState' when current != null => _withServerState(current, json),
-      'chatLine' when current != null => current.copyWith(
+      // The players' chat; not the spectators'.
+      'chatLine' when current != null && json['room'] != 'spectator' => current.copyWith(
         chat: current.chat.add((
           username: json['username'] as String? ?? '',
           text: json['text'] as String? ?? '',
@@ -274,6 +286,21 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
       first.complete();
     } else {
       state = AsyncData(next);
+    }
+    if (next.opponentProposesTakeback && !(current?.opponentProposesTakeback ?? false)) {
+      unawaited(_declineUnwantedTakeback(next));
+    }
+  }
+
+  /// Declines the opponent's takeback when the user's "Takeback" setting doesn't allow it: lichess
+  /// still has the account's own setting, which Knightly can't change.
+  Future<void> _declineUnwantedTakeback(BoardGameState game) async {
+    try {
+      final prefs = await ref.read(accountPreferencesProvider.future);
+      if (!ref.mounted || game.takebacksAllowed(prefs.takeback)) return;
+      await declineTakeback();
+    } catch (e, st) {
+      _logger.warning('Could not decline the takeback', e, st);
     }
   }
 

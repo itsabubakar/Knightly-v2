@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lichess_mobile/src/model/account/account_preferences.dart';
+import 'package:lichess_mobile/src/model/account/account_repository.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/board_api/game_notes.dart';
@@ -13,6 +17,7 @@ import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/settings/board_settings_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_screen.dart';
 import 'package:lichess_mobile/src/widgets/bottom_bar.dart';
+import 'package:lichess_mobile/src/widgets/game_layout.dart';
 import 'package:lichess_mobile/src/widgets/material_diff.dart';
 import 'package:lichess_mobile/src/widgets/platform_alert_dialog.dart';
 import 'package:material_ui/material_ui.dart';
@@ -38,14 +43,17 @@ void main() {
     String moves = 'e2e4 e7e5',
     Map<String, dynamic>? gameFull,
     ShowRatings showRatings = ShowRatings.yes,
+    Map<String, Object>? defaultPreferences,
   }) async {
     final app = await makeTestProviderScopeApp(
       tester,
       home: const GameScreen(source: ExistingGameSource(GameFullId('abcdefghwxyz'))),
       authUser: fakeAuthUser,
+      defaultPreferences: defaultPreferences,
       overrides: {
         useBoardApiProvider: useBoardApiProvider.overrideWithValue(true),
         showRatingsPrefProvider: showRatingsPrefProvider.overrideWith((ref) => showRatings),
+        kidModeProvider: kidModeProvider.overrideWith((ref) => false),
         httpClientFactoryProvider: httpClientFactoryProvider.overrideWith(
           (ref) => FakeHttpClientFactory(api.client),
         ),
@@ -154,6 +162,119 @@ void main() {
     await closeGame(tester);
   });
 
+  testWidgets('takebacks set to never: no button, proposals declined', (tester) async {
+    await openGame(
+      tester,
+      // Knightly's own copy of the setting (lichess still has the account's).
+      defaultPreferences: {
+        'knightly.accountPrefOverrides': jsonEncode({'takeback': Takeback.never.value}),
+      },
+    );
+    expect(_button('Propose takeback'), findsNothing);
+
+    api.gameLines.add(gameStateJson(moves: 'e2e4 e7e5', btakeback: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Your opponent proposes a takeback'), findsNothing);
+    expect(api.posts.map((p) => p.$1), contains('/api/board/game/abcdefgh/takeback/no'));
+
+    await closeGame(tester);
+  });
+
+  testWidgets('takebacks allowed: the button and the proposal show', (tester) async {
+    await openGame(tester);
+    expect(_button('Propose takeback'), findsOneWidget);
+
+    api.gameLines.add(gameStateJson(moves: 'e2e4 e7e5', btakeback: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Your opponent proposes a takeback'), findsOneWidget);
+    expect(api.posts.map((p) => p.$1), isNot(contains('/api/board/game/abcdefgh/takeback/no')));
+
+    await closeGame(tester);
+  });
+
+  testWidgets('holding previous goes back through the moves', (tester) async {
+    await openGame(tester, moves: 'e2e4 e7e5 g1f3 b8c6 f1c4 g8f6');
+    int shownMove() => tester.widget<GameLayout>(find.byType(GameLayout)).currentMoveIndex;
+    expect(shownMove(), 6);
+
+    final gesture = await tester.startGesture(tester.getCenter(_button('Previous move')));
+    await tester.pump(const Duration(seconds: 2));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await gesture.up();
+    await tester.pump();
+    expect(shownMove(), 0);
+
+    await closeGame(tester);
+  });
+
+  testWidgets("the opponent's rematch offer shows under the board", (tester) async {
+    await openGame(tester);
+    api.gameLines.add(gameStateJson(moves: 'e2e4 e7e5', status: 'resign', winner: 'black'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('Close'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    api.eventLines.add({'type': 'challenge', 'challenge': challengeJson(rematchOf: 'abcdefgh')});
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('opponent wants a rematch'), findsOneWidget);
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(api.posts.map((p) => p.$1), contains('/api/challenge/H9fIRZUk/accept'));
+
+    // No game start here: waits for it, then gives up.
+    await tester.pump(const Duration(seconds: 10));
+    await closeGame(tester);
+  });
+
+  testWidgets('challenges received during the game show in the top bar', (tester) async {
+    api.getResponses['/api/challenge'] = {
+      'in': [challengeJson(challengerId: 'bobby')],
+      'out': <Object>[],
+    };
+    await openGame(tester);
+    expect(find.byTooltip('Challenges'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    await closeGame(tester);
+  });
+
+  testWidgets('chat: unread badge, messages, quick phrases', (tester) async {
+    await openGame(tester);
+    expect(find.byTooltip('Chat'), findsOneWidget);
+
+    api.gameLines.add({
+      'type': 'chatLine',
+      'room': 'player',
+      'username': 'opponent',
+      'text': 'Hi there',
+    });
+    // Spectators' messages aren't shown.
+    api.gameLines.add({
+      'type': 'chatLine',
+      'room': 'spectator',
+      'username': 'someone',
+      'text': 'Nice game',
+    });
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.descendant(of: find.byTooltip('Chat'), matching: find.text('1')), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Chat'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Hi there'), findsOneWidget);
+    expect(find.text('Nice game'), findsNothing);
+
+    await tester.tap(find.text('Good luck'));
+    await tester.pump(const Duration(milliseconds: 100));
+    final chat = api.posts.singleWhere((p) => p.$1 == '/api/board/game/abcdefgh/chat');
+    expect(chat.$2, contains('text=Good+luck'));
+
+    await closeGame(tester);
+  });
+
   testWidgets('accepting the opponent draw offer', (tester) async {
     await openGame(tester);
 
@@ -236,6 +357,38 @@ void main() {
   testWidgets('no rematch while the game is going on', (tester) async {
     await openGame(tester);
     expect(_button('Rematch'), findsNothing);
+    await closeGame(tester);
+  });
+
+  testWidgets('the end of game popup leads with the XP', (tester) async {
+    // A Rapid game of 29 moves: 15 XP × 29/30, rounded.
+    const moves =
+        'g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 '
+        'g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 '
+        'g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 '
+        'g1f3 g8f6 b1c3 b8c6 f3g1 f6g8 c3b1 c6b8 e2e4 e7e5';
+    // The screen's wake lock answers (the test runs in real time below, where it's called).
+    tester.binding.defaultBinaryMessenger.setMockMessageHandler(
+      'dev.flutter.pigeon.wakelock_plus_platform_interface.WakelockPlusApi.toggle',
+      (_) async => const StandardMessageCodec().encodeMessage(<Object?>[]),
+    );
+    await openGame(tester);
+    api.gameLines.add(gameStateJson(moves: moves, status: 'resign', winner: 'black'));
+    await tester.pump(const Duration(milliseconds: 100));
+    // The game is counted in the database (real time).
+    for (var i = 0; i < 40; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    await tester.pump(const Duration(seconds: 1));
+
+    // A loss gives the same XP as a win.
+    expect(find.text('+15 XP'), findsOneWidget);
+    expect(find.text('Rapid · 29 moves'), findsOneWidget);
+    expect(find.text('0-1 · White resigned'), findsWidgets);
+
+    await tester.tap(find.text('Close'));
+    await tester.pump(const Duration(seconds: 1));
     await closeGame(tester);
   });
 

@@ -15,6 +15,9 @@ class FakeBoardApi() {
   /// The paths of the POST requests, with their form body.
   final posts = <(String, String)>[];
 
+  /// The JSON answers of GET requests, by path (others are 404s).
+  final getResponses = <String, Object>{};
+
   /// The JSON answers of POST requests, by path.
   final postResponses = <String, Map<String, dynamic>>{};
 
@@ -29,6 +32,9 @@ class FakeBoardApi() {
     if (request.method == 'POST') {
       posts.add((path, await bodyStream.bytesToString()));
       final json = postResponses[path] ?? {'ok': true};
+      return http.StreamedResponse(Stream.value(utf8.encode(jsonEncode(json))), 200);
+    }
+    if (getResponses[path] case final json?) {
       return http.StreamedResponse(Stream.value(utf8.encode(jsonEncode(json))), 200);
     }
     return http.StreamedResponse(Stream.value(utf8.encode('')), 404);
@@ -109,4 +115,26 @@ Map<String, dynamic> gameStartJson({
     'source': source,
     'hasMoved': hasMoved,
   },
+};
+
+/// A challenge as lichess sends it, from [challengerId] to [destId]; [rematchOf] makes it a rematch
+/// offer.
+Map<String, dynamic> challengeJson({
+  String id = 'H9fIRZUk',
+  String challengerId = 'opponent',
+  String destId = 'testuser',
+  String? rematchOf,
+}) => {
+  'id': id,
+  'url': 'https://lichess.org/$id',
+  'status': 'created',
+  'challenger': {'id': challengerId, 'name': challengerId, 'rating': 1550},
+  'destUser': {'id': destId, 'name': destId, 'rating': 1500},
+  'variant': {'key': 'standard', 'name': 'Standard', 'short': 'Std'},
+  'rated': true,
+  'speed': 'rapid',
+  'timeControl': {'type': 'clock', 'limit': 600, 'increment': 5, 'show': '10+5'},
+  'color': 'random',
+  'direction': 'in',
+  'rematchOf': ?rematchOf,
 };

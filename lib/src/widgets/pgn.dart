@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/account_preferences.dart';
 import 'package:lichess_mobile/src/model/common/node.dart';
 import 'package:lichess_mobile/src/model/common/uci.dart';
+import 'package:lichess_mobile/src/model/local_analysis/move_comments.dart';
 import 'package:lichess_mobile/src/styles/lichess_colors.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/utils/duration.dart';
@@ -1205,7 +1206,8 @@ class const InlineMove({
                 context: context,
                 isScrollControlled: true,
                 showDragHandle: true,
-                builder: (context) => _MoveContextMenu(
+                builder: (sheetContext) => _MoveContextMenu(
+                  rootNavigator: Navigator.of(context, rootNavigator: true),
                   notifier: params.notifier,
                   title: ply.isOdd
                       ? '${(ply / 2).ceil()}. $moveWithNag'
@@ -1256,6 +1258,8 @@ class const InlineMove({
 }
 
 class const _MoveContextMenu({
+  /// The navigator the comment sheet opens on, once this menu is closed.
+  required final NavigatorState rootNavigator,
   required final String title,
   required final UciPath path,
   required final ViewBranch branch,
@@ -1354,12 +1358,94 @@ class const _MoveContextMenu({
             snackBar.show(copiedMessage);
           },
         ),
+        if (notifier case final MoveCommentNotifier commenter when commenter.canCommentMoves)
+          BottomSheetContextMenuAction(
+            icon: Icons.edit_note,
+            child: Text(userMoveComment(branch).isEmpty ? 'Comment' : 'Edit comment'),
+            onPressed: () {
+              // This menu is closed by now: the sheet opens from the screen under it.
+              final navigator = rootNavigator;
+              showAdaptiveBottomSheet<void>(
+                context: navigator.context,
+                isScrollControlled: true,
+                builder: (_) => MoveCommentSheet(
+                  title: title,
+                  initialText: userMoveComment(branch),
+                  onSave: (text) => commenter.setMoveComment(path, text),
+                ),
+              );
+            },
+          ),
         BottomSheetContextMenuAction(
           icon: Icons.delete,
           child: Text(context.l10n.deleteFromHere),
           onPressed: () => notifier?.deleteFromHere(path),
         ),
       ],
+    );
+  }
+}
+
+/// Writes the user's comment on a move: saved with the game, shown under the move.
+class const MoveCommentSheet({
+  /// The move, e.g. "12. Nf3".
+  required final String title,
+  required final String initialText,
+  required final Future<void> Function(String text) onSave,
+  super.key,
+}) extends StatefulWidget {
+  @override
+  State<MoveCommentSheet> createState() => _MoveCommentSheetState();
+}
+
+class _MoveCommentSheetState() extends State<MoveCommentSheet> {
+  late final _text = TextEditingController(text: widget.initialText);
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save(String text) async {
+    Navigator.of(context).pop();
+    await widget.onSave(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(widget.title, style: TextTheme.of(context).titleLarge),
+              const SizedBox(height: 12.0),
+              TextField(
+                controller: _text,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 8,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12.0),
+              Row(
+                children: [
+                  if (widget.initialText.isNotEmpty)
+                    TextButton(onPressed: () => _save(''), child: const Text('Delete')),
+                  const Spacer(),
+                  FilledButton(onPressed: () => _save(_text.text), child: const Text('Save')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

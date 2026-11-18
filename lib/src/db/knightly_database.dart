@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 const kKnightlyDatabaseName = 'knightly.db';
 
 /// The current version of [kKnightlyDatabaseName]'s schema.
-const kKnightlyDatabaseVersion = 6;
+const kKnightlyDatabaseVersion = 7;
 
 /// A provider for Knightly's own [Database]: the data that only Knightly has (XP, achievements,
 /// streak, tags, study sessions, goals), backed up by `KnightlyBackup`.
@@ -149,5 +149,25 @@ final Map<int, void Function(Batch batch)> _migrations = {
   6: (batch) {
     batch.execute('ALTER TABLE study_session ADD COLUMN studyId TEXT');
     batch.execute('ALTER TABLE study_session ADD COLUMN studyName TEXT');
+  },
+  // Knightly's computer analysis of games (made on the phone), and the user's comments on moves.
+  7: (batch) {
+    batch.execute('''
+      CREATE TABLE game_analysis (
+        gameId TEXT PRIMARY KEY,
+        evals TEXT NOT NULL,
+        deep INTEGER NOT NULL,
+        updatedAt INTEGER NOT NULL
+      )
+    ''');
+    batch.execute('''
+      CREATE TABLE move_comment (
+        gameId TEXT NOT NULL,
+        moves TEXT NOT NULL,
+        text TEXT NOT NULL,
+        updatedAt INTEGER NOT NULL,
+        PRIMARY KEY (gameId, moves)
+      )
+    ''');
   },
 };

@@ -134,6 +134,47 @@ class ProgressionNotifier() extends AsyncNotifier<ProgressionState?> {
     state = AsyncData(await _readState(db, userId, current.startedAt));
   }
 
+  /// Counts a game that just ended in Knightly, at once rather than at the next sync (which then
+  /// skips it: same id). Returns what it gave, or null when it doesn't count (signed out, before
+  /// the progression started).
+  Future<GameXpAward?> addFinishedGame({
+    required GameId id,
+    required Speed speed,
+    required int plies,
+    required GameResult result,
+
+    /// When the game ended, now if not given.
+    DateTime? finishedAt,
+  }) async {
+    final authUser = ref.read(authControllerProvider);
+    final before = state.value ?? await future;
+    // Now, after the progression is loaded: it may start right now.
+    final endedAt = finishedAt ?? DateTime.now();
+    if (authUser == null || before == null || endedAt.isBefore(before.startedAt)) return null;
+    final db = await ref.read(knightlyDatabaseProvider.future);
+    final userId = authUser.user.id;
+    final moves = fullMoves(plies);
+    final eventId = 'game:$id';
+    final existing = await db.query('xp_event', where: 'id = ?', whereArgs: [eventId]);
+    final xp = existing.isNotEmpty ? existing.first['xp']! as int : gameXp(speed, moves: moves);
+    if (existing.isEmpty) {
+      final batch = db.batch();
+      _addEvent(batch, id: eventId, userId: userId, source: 'game', xp: xp, createdAt: endedAt);
+      batch.insert('game_record', {
+        'id': id.value,
+        'userId': userId.value,
+        'speed': speed.name,
+        'result': result.name,
+        'finishedAt': endedAt.millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await batch.commit(noResult: true);
+      await _awardRewards(db, userId, before.startedAt);
+    }
+    final after = await _readState(db, userId, before.startedAt);
+    if (ref.mounted) state = AsyncData(after);
+    return (xp: xp, speed: speed, moves: moves, before: before.level, after: after);
+  }
+
   /// Marks the [ProgressionState.celebrations] as shown.
   Future<void> markCelebrated() async {
     final current = state.value;
@@ -164,7 +205,8 @@ class ProgressionNotifier() extends AsyncNotifier<ProgressionState?> {
             queryParameters: {
               'since': since.millisecondsSinceEpoch.toString(),
               'max': '300',
-              'moves': 'false',
+              // The moves give the games' length, which their XP depends on.
+              'moves': 'true',
             },
           ),
           headers: {'Accept': 'application/x-ndjson'},
@@ -180,7 +222,9 @@ class ProgressionNotifier() extends AsyncNotifier<ProgressionState?> {
         id: 'game:${game.id}',
         userId: userId,
         source: 'game',
-        xp: gameXp(game.speed),
+        xp: game.lastMoveAt.isBefore(kGameLengthXpSince)
+            ? gameXp(game.speed)
+            : gameXp(game.speed, moves: fullMoves(_plies(game.moves))),
         createdAt: game.lastMoveAt,
       );
       final pov = game.white.user?.id == userId ? Side.white : Side.black;
@@ -289,6 +333,26 @@ void _addEvent(
 }
 
 typedef _SyncState = ({DateTime startedAt, DateTime? lastSyncAt});
+
+/// The result of a game for the player.
+enum GameResult() {
+  win,
+  draw,
+  loss,
+}
+
+/// What a finished game gave: its [xp] (for its [speed] and number of [moves]), the level
+/// [before] and the progression [after].
+typedef GameXpAward = ({
+  int xp,
+  Speed speed,
+  int moves,
+  PlayerLevel before,
+  ProgressionState after,
+});
+
+/// The number of half moves of the moves [text] lichess sends.
+int _plies(String? text) => text == null || text.trim().isEmpty ? 0 : text.trim().split(' ').length;
 
 /// The freezes held, the level up to which the level-ups were rewarded, and up to which they were
 /// celebrated.

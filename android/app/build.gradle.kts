@@ -40,6 +40,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // The scheme of the sign in redirect (kOAuthCustomUriSchemeName in constants.dart).
+        manifestPlaceholders["oauthScheme"] = "app.knightly"
     }
 
     signingConfigs {
@@ -63,6 +65,8 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            // Its own sign in redirect, so the release app installed next to it keeps its own.
+            manifestPlaceholders["oauthScheme"] = "app.knightly.debug"
         }
     }
 

@@ -16,7 +16,7 @@ import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
 import 'package:lichess_mobile/src/utils/share.dart';
-import 'package:lichess_mobile/src/view/message/conversation_screen.dart';
+import 'package:lichess_mobile/src/view/message/inbox_in_browser.dart';
 import 'package:lichess_mobile/src/view/play/challenge_odd_bots_screen.dart';
 import 'package:lichess_mobile/src/view/play/create_challenge_bottom_sheet.dart';
 import 'package:lichess_mobile/src/view/user/game_history_screen.dart';
@@ -229,13 +229,8 @@ class const _UserProfileListView(
                             child: _UserActionButton(
                               icon: Icons.chat_bubble_outline,
                               label: context.l10n.composeMessage,
-                              onPressed: () {
-                                Navigator.of(context).pushHidingTabBar(
-                                  ConversationScreen.buildRoute(
-                                    user: user.lightUser.copyWith(isOnline: data.isOnline),
-                                  ),
-                                );
-                              },
+                              // In the browser: lichess's API can't read the messages.
+                              onPressed: () => openInboxInBrowser(user.id),
                             ),
                           ),
                         if (user.followable == true && user.following != true)

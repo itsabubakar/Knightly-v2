@@ -4,7 +4,9 @@ import 'package:dartchess/dartchess.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:lichess_mobile/src/db/knightly_database.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/eval.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
@@ -14,6 +16,8 @@ import 'package:lichess_mobile/src/model/common/socket.dart';
 import 'package:lichess_mobile/src/model/common/uci.dart';
 import 'package:lichess_mobile/src/model/game/game_repository.dart';
 import 'package:lichess_mobile/src/model/game/game_socket_events.dart';
+import 'package:lichess_mobile/src/model/local_analysis/local_analysis.dart';
+import 'package:lichess_mobile/src/model/local_analysis/local_analysis_runner.dart';
 import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/network/socket.dart';
 import 'package:logging/logging.dart';
@@ -89,11 +93,20 @@ class ServerAnalysisService(final Ref ref) {
 
   SocketClient? _socketClient;
 
+  /// Knightly's analysis being made on the phone, and its game.
+  LocalAnalysisRunner? _localRunner;
+  GameId? _localGameId;
+
   /// Request server analysis for a game.
   ///
   /// This will return a future that completes when the server analysis is launched (but not when
   /// it is finished).
   Future<void> requestAnalysis(ServerAnalysisSource source, [Side? side]) async {
+    // Knightly: lichess only analyses games for the official app, so the analysis is made on the
+    // phone instead.
+    if (source case _GameServerAnalysisSource(:final gameId) when ref.read(useBoardApiProvider)) {
+      return await _requestLocalAnalysis(gameId);
+    }
     // If we are already listening for analysis updates of this exact game/study,
     // don't tear everything down and reconnect.
     if (_currentAnalysis.value == source &&
@@ -189,6 +202,78 @@ class ServerAnalysisService(final Ref ref) {
     });
   }
 
+  /// Shows the analysis Knightly saved for [gameId], if any, and finishes its deep pass if it didn't.
+  Future<void> restoreLocalAnalysis(GameId gameId) async {
+    if (!ref.read(useBoardApiProvider) || _localGameId == gameId) return;
+    final db = await ref.read(knightlyDatabaseProvider.future);
+    if (await loadLocalAnalysis(db, gameId) == null) return;
+    await _requestLocalAnalysis(gameId);
+  }
+
+  /// Knightly's computer analysis of [gameId], made on the phone: a quick pass shows the
+  /// judgements within seconds, then a deep one refines them in the background. Each step is sent
+  /// as lichess's server analysis progress is, and the analysis is saved.
+  Future<void> _requestLocalAnalysis(GameId gameId) async {
+    if (_localGameId == gameId) return;
+    _cancelAnalysis();
+    final source = ServerAnalysisSource.game(gameId: gameId);
+    final db = await ref.read(knightlyDatabaseProvider.future);
+    final game = await ref.read(gameRepositoryProvider).getGame(gameId);
+    final initial = game.steps.first.position;
+    final moves = [for (final step in game.steps.skip(1)) step.sanMove!];
+    final stored = await loadLocalAnalysis(db, gameId);
+    final saved = stored != null && stored.evals.length == moves.length + 1 ? stored : null;
+
+    void emit(GameEvals evals) {
+      _analysisProgress.value = (
+        source,
+        ServerEvalEvent.fromJson(
+          makeAnalysisJson(
+            gameId: gameId,
+            initial: initial,
+            moves: [for (final move in moves) move.move],
+            evals: evals,
+          ),
+        ),
+      );
+    }
+
+    if (saved != null) emit(saved.evals);
+    if (saved != null && saved.deep) return;
+
+    final runner = LocalAnalysisRunner(
+      ref: ref,
+      gameId: gameId,
+      variant: game.meta.variant,
+      initial: initial,
+      moves: moves,
+    );
+    _localRunner = runner;
+    _localGameId = gameId;
+    _currentAnalysis.value = source;
+    unawaited(() async {
+      try {
+        var evals = saved?.evals;
+        if (evals == null) {
+          evals = await runner.run(kQuickAnalysisTime, onProgress: emit);
+          if (evals == null) return;
+          await saveLocalAnalysis(db, gameId, evals, deep: false);
+        }
+        final deep = await runner.run(kDeepAnalysisTime, previous: evals, onProgress: emit);
+        if (deep == null) return;
+        await saveLocalAnalysis(db, gameId, deep, deep: true);
+      } catch (e, st) {
+        _logger.warning('Could not analyse $gameId', e, st);
+      } finally {
+        if (identical(_localRunner, runner)) {
+          _localRunner = null;
+          _localGameId = null;
+          _currentAnalysis.value = null;
+        }
+      }
+    }());
+  }
+
   /// Work out why the server refused to start an analysis, from the plain-text body it sends
   /// alongside the 400.
   static ServerAnalysisRequestError _classifyRequestAnalysisError(ServerException e) {
@@ -205,6 +290,9 @@ class ServerAnalysisService(final Ref ref) {
 
   /// Cancel the ongoing server analysis, if any.
   void _cancelAnalysis() {
+    _localRunner?.cancel();
+    _localRunner = null;
+    _localGameId = null;
     _socketSubscription?.cancel();
     _socketSubscription = null;
     _currentAnalysis.value = null;
@@ -212,6 +300,28 @@ class ServerAnalysisService(final Ref ref) {
     if (_socketClient?.isDisposed != true) {
       _socketClient?.dispose();
       _socketClient = null;
+    }
+  }
+
+  /// Removes the computer analysis from the mainline of [root]: the evaluations, judgements and
+  /// comments, and the best lines (except the one [keep] is in, where the user is).
+  static void clearComputerAnalysis(Root root, {UciPath? keep}) {
+    var path = UciPath.empty;
+    Node node = root;
+    while (true) {
+      if (node is Branch) {
+        node.lichessAnalysisComments = null;
+        node.nags = null;
+      }
+      final mainPath = path;
+      node.children.removeWhere(
+        (child) =>
+            child.isComputerVariation && !(keep != null && keep.contains(mainPath + child.id)),
+      );
+      final next = node.children.firstOrNull;
+      if (next == null) break;
+      path = path + next.id;
+      node = next;
     }
   }
 
@@ -258,8 +368,11 @@ class ServerAnalysisService(final Ref ref) {
             position: n1.position.playUnchecked(move),
             sanMove: SanMove(san, move),
             isCollapsed: children.length > 1,
+            isComputerVariation: true,
           ),
         );
+        // The rest of the line.
+        mergeOngoingAnalysis(n1.childById(UciCharPair.fromUci(uci))!, n2child);
       }
     }
   }

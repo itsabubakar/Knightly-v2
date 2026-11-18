@@ -463,6 +463,11 @@ class RetroController(final RetroOptions options)
     }
   }
 
+  // Once the mistakes are found, the analysis stays as it was: Knightly's deep pass would otherwise
+  // change the tree (and the mistakes) under the user.
+  @override
+  bool acceptsAnalysisEvent(ServerEvalEvent event) => !_serverAnalysisCompleter.isCompleted;
+
   @override
   Future<void> onServerAnalysisEvent(ServerEvalEvent event) async {
     if (!state.hasValue) return;

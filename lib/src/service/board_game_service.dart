@@ -5,6 +5,7 @@ import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
 import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/board_api/board_events.dart';
 import 'package:lichess_mobile/src/model/board_api/board_game_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/rematch_offers.dart';
 import 'package:lichess_mobile/src/model/challenge/challenge_repository.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/view/game/game_screen.dart';
@@ -33,6 +34,8 @@ class BoardGameService(final Ref ref) {
 
   void start() {
     if (!ref.read(useBoardApiProvider)) return;
+    // Collects the rematch offers from now on, for the game screens.
+    ref.read(rematchOffersProvider);
     // The events object is rebuilt at sign in and sign out.
     _eventsSubscription = ref.listen<BoardEvents>(boardEventsProvider, (_, events) {
       unawaited(_subscription?.cancel());

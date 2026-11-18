@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lichess_mobile/src/db/knightly_database.dart';
+import 'package:lichess_mobile/src/model/common/id.dart';
+import 'package:lichess_mobile/src/model/common/speed.dart';
 import 'package:lichess_mobile/src/model/progression/achievements.dart';
 import 'package:lichess_mobile/src/model/progression/levels.dart';
 import 'package:lichess_mobile/src/model/progression/progression.dart';
@@ -114,6 +116,41 @@ void main() {
 
       expect(progression.totalXp, 31);
       expect(progression.gamesPlayed, 2);
+    });
+
+    test('counts a game that just ended at once, and only once', () async {
+      final container = await progressionContainer(startedAt: DateTime(2023));
+      final before = (await container.read(progressionProvider.future))!;
+
+      // A Rapid game of 45 moves: 15 XP × 1.25.
+      final award = await container
+          .read(progressionProvider.notifier)
+          .addFinishedGame(
+            id: const GameId('rapid123'),
+            speed: Speed.rapid,
+            plies: 89,
+            result: GameResult.loss,
+            finishedAt: DateTime.now(),
+          );
+      expect(award?.xp, 19);
+      expect(award?.moves, 45);
+      expect(award?.before, before.level);
+      expect(award?.after.gamesPlayed, before.gamesPlayed + 1);
+      final counted = (await container.read(progressionProvider.future))!;
+      expect(counted.gamesPlayed, before.gamesPlayed + 1);
+
+      // Counted again (the popup shown twice): the same XP, nothing added.
+      final again = await container
+          .read(progressionProvider.notifier)
+          .addFinishedGame(
+            id: const GameId('rapid123'),
+            speed: Speed.rapid,
+            plies: 89,
+            result: GameResult.loss,
+            finishedAt: DateTime.now(),
+          );
+      expect(again?.xp, 19);
+      expect(again?.after.totalXp, award?.after.totalXp);
     });
 
     test('ignores what happened before the start', () async {

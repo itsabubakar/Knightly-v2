@@ -78,7 +78,7 @@ void main() {
       final params = openedUrl!.queryParameters;
       expect(params['response_type'], 'code');
       expect(params['client_id'], kLichessClientId);
-      expect(params['redirect_uri'], 'app.knightly://login-callback');
+      expect(params['redirect_uri'], '$kOAuthCustomUriSchemeName://login-callback');
       expect(params['scope'], contains('board:play'));
       expect(params['scope'], isNot(contains('web:mobile')));
       expect(params['code_challenge_method'], 'S256');

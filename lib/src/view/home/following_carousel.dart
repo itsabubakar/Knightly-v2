@@ -9,7 +9,7 @@ import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/l10n.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/utils/string.dart';
-import 'package:lichess_mobile/src/view/message/conversation_screen.dart';
+import 'package:lichess_mobile/src/view/message/inbox_in_browser.dart';
 import 'package:lichess_mobile/src/view/relation/friend_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/view/user/user_screen.dart';
@@ -171,10 +171,8 @@ Widget _buildActionButtons(BuildContext context, WidgetRef ref, FollowingUser fr
           ContextMenuAction(
             icon: Icons.chat_bubble_outline,
             label: context.l10n.message,
-            onPressed: () {
-              Navigator.of(context)
-                  .pushHidingTabBar(ConversationScreen.buildRoute(user: friend.user));
-            },
+            // In the browser: lichess's API can't read the messages.
+            onPressed: () => openInboxInBrowser(friend.user.id),
           ),
           ContextMenuAction(
             icon: LichessIcons.crossed_swords,

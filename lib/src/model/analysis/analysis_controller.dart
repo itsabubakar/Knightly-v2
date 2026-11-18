@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:intl/intl.dart';
+import 'package:lichess_mobile/src/db/knightly_database.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_preferences.dart';
 import 'package:lichess_mobile/src/model/analysis/common_analysis_state.dart';
 import 'package:lichess_mobile/src/model/analysis/forecast.dart';
@@ -28,6 +29,7 @@ import 'package:lichess_mobile/src/model/game/game_repository_providers.dart';
 import 'package:lichess_mobile/src/model/game/game_socket_events.dart';
 import 'package:lichess_mobile/src/model/game/playable_game.dart';
 import 'package:lichess_mobile/src/model/game/player.dart';
+import 'package:lichess_mobile/src/model/local_analysis/move_comments.dart';
 import 'package:lichess_mobile/src/model/tv/tv_socket_events.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/network/http.dart';
@@ -130,7 +132,7 @@ class AnalysisController(final AnalysisOptions options)
         EngineEvaluationMixin,
         ServerAnalysisMixin<AnalysisState>,
         OpeningExplorerMixin<AnalysisState>
-    implements PgnTreeNotifier {
+    implements PgnTreeNotifier, MoveCommentNotifier {
   static final Uri socketUri = Uri(path: '/analysis/socket/v5');
 
   StreamSubscription<SocketEvent>? _socketSubscription;
@@ -346,6 +348,19 @@ class AnalysisController(final AnalysisOptions options)
     state = AsyncData(analysisState);
     _currentPath = analysisState.currentPath;
 
+    // The user's comments on the moves, saved on the phone.
+    unawaited(_restoreMoveComments());
+
+    // Knightly's own computer analysis, saved on the phone, when lichess has none.
+    if (analysisState.serverAnalysisSource != null && !analysisState.hasServerAnalysis) {
+      unawaited(
+        ref
+            .read(serverAnalysisServiceProvider)
+            .restoreLocalAnalysis(analysisState.gameId!)
+            .catchError((Object e) => debugPrint('Could not restore the analysis: $e')),
+      );
+    }
+
     socketClient.firstConnection
         .timeout(const Duration(seconds: 3))
         .onError((_, _) {})
@@ -546,6 +561,58 @@ class AnalysisController(final AnalysisOptions options)
   void deleteFromHere(UciPath path) {
     _root.deleteAt(path);
     _setPath(path.penultimate, shouldRecomputeRootView: true);
+  }
+
+  /// The game the user's comments on the moves are saved for: a game's analysis only.
+  StringId? get _commentsGameId => switch (options) {
+    ArchivedGame(:final gameId) => gameId,
+    ActiveCorrespondenceGame(:final gameFullId) => gameFullId.gameId,
+    Pgn(:final id) => id,
+    Standalone() => null,
+  };
+
+  @override
+  bool get canCommentMoves => _commentsGameId != null;
+
+  Future<void> _restoreMoveComments() async {
+    final gameId = _commentsGameId;
+    if (gameId == null) return;
+    try {
+      final db = await ref.read(knightlyDatabaseProvider.future);
+      if (!ref.mounted) return;
+      await applySavedMoveComments(db, gameId, _root);
+      if (!ref.mounted || !state.hasValue) return;
+      final current = state.requireValue;
+      state = AsyncData(
+        current.copyWith(
+          root: _root.view,
+          currentNode: AnalysisCurrentNode.fromNode(_root.nodeAt(current.currentPath)),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Could not read the move comments: $e');
+    }
+  }
+
+  @override
+  Future<void> setMoveComment(UciPath path, String text) async {
+    final gameId = _commentsGameId;
+    final node = _root.nodeAt(path);
+    if (gameId == null || node is! Branch) return;
+    setBranchComment(node, text);
+    final current = state.requireValue;
+    state = AsyncData(
+      current.copyWith(
+        root: _root.view,
+        currentNode: AnalysisCurrentNode.fromNode(_root.nodeAt(current.currentPath)),
+      ),
+    );
+    await saveMoveComment(
+      await ref.read(knightlyDatabaseProvider.future),
+      gameId,
+      movesTo(_root, path),
+      text,
+    );
   }
 
   @override
@@ -772,6 +839,9 @@ class AnalysisController(final AnalysisOptions options)
       clock: (node is Branch) ? node.clock : null,
     );
   }
+
+  @override
+  UciPath? get pathKeptOnAnalysisUpdate => state.value?.currentPath;
 
   @override
   Future<void> requestServerAnalysis([Side? side]) async {

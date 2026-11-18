@@ -2,6 +2,7 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/analysis/analysis_preferences.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/game/player.dart';
 import 'package:lichess_mobile/src/model/user/user.dart';
 import 'package:lichess_mobile/src/service/server_analysis_service.dart';
@@ -55,9 +56,22 @@ class const ServerAnalysisSummary({
         ? ListView(
             children: [
               if (serverAnalysisSource == currentGameAnalysis)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16.0),
-                  child: WaitingForServerAnalysis(),
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  // Knightly's analysis is shown at once, then refined by a deeper pass.
+                  child: ref.watch(useBoardApiProvider)
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox.square(
+                              dimension: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 8.0),
+                            Text('Refining the analysis...'),
+                          ],
+                        )
+                      : const WaitingForServerAnalysis(),
                 ),
 
               if (acplChartParams != null) AcplChart(params: acplChartParams!),

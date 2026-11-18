@@ -84,11 +84,11 @@ class const ProgressTabScreen({super.key}) extends ConsumerWidget {
                   controller: progressScrollController,
                   children: [
                     const Padding(padding: Styles.bodySectionPadding, child: JourneyCard()),
+                    const Padding(padding: Styles.bodySectionPadding, child: ReviewCard()),
                     const Padding(
                       padding: Styles.horizontalBodyPadding,
                       child: AchievementsSection(),
                     ),
-                    const Padding(padding: Styles.bodySectionPadding, child: ReviewCard()),
                     const AccountPerfCards(padding: Styles.bodySectionPadding),
                     if (account != null)
                       Padding(
