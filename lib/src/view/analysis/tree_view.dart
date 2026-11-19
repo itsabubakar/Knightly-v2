@@ -36,6 +36,10 @@ class const AnalysisTreeView(final AnalysisOptions options) extends ConsumerWidg
               showTopDivider: false,
               shouldShowComputerAnalysis: enableServerAnalysis,
               shouldShowComments: enableServerAnalysis && prefs.showPgnComments,
+              // Knightly: the user's comments are apart from the computer's, with their own switch.
+              shouldShowUserComments: ref.read(ctrlProvider.notifier).canCommentMoves
+                  ? prefs.showUserComments
+                  : null,
               shouldShowAnnotations: enableServerAnalysis && prefs.showAnnotations,
               premovePaths: analysisState.forecast?.lines,
               displayMode: prefs.inlineNotation ? .inlineNotation : .twoColumn,

@@ -93,6 +93,12 @@ class ServerAnalysisService(final Ref ref) {
 
   SocketClient? _socketClient;
 
+  /// How often the quick pass of Knightly's analysis shows its progress.
+  static const kQuickAnalysisUpdates = Duration(seconds: 1);
+
+  /// How often the deep pass shows its refinements.
+  static const kDeepAnalysisUpdates = Duration(seconds: 5);
+
   /// Knightly's analysis being made on the phone, and its game.
   LocalAnalysisRunner? _localRunner;
   GameId? _localGameId;
@@ -224,7 +230,11 @@ class ServerAnalysisService(final Ref ref) {
     final stored = await loadLocalAnalysis(db, gameId);
     final saved = stored != null && stored.evals.length == moves.length + 1 ? stored : null;
 
+    // Each update rebuilds the analysis tree and its move list: the progress is sent now and then,
+    // not after each position, which made the board lag.
+    DateTime? lastEmit;
     void emit(GameEvals evals) {
+      lastEmit = DateTime.now();
       _analysisProgress.value = (
         source,
         ServerEvalEvent.fromJson(
@@ -237,6 +247,11 @@ class ServerAnalysisService(final Ref ref) {
         ),
       );
     }
+
+    /// Sends [evals] if [every] has passed since the last update.
+    void Function(GameEvals) throttled(Duration every) => (evals) {
+      if (lastEmit == null || DateTime.now().difference(lastEmit!) >= every) emit(evals);
+    };
 
     if (saved != null) emit(saved.evals);
     if (saved != null && saved.deep) return;
@@ -255,12 +270,21 @@ class ServerAnalysisService(final Ref ref) {
       try {
         var evals = saved?.evals;
         if (evals == null) {
-          evals = await runner.run(kQuickAnalysisTime, onProgress: emit);
+          evals = await runner.run(
+            kQuickAnalysisTime,
+            onProgress: throttled(kQuickAnalysisUpdates),
+          );
           if (evals == null) return;
+          emit(evals);
           await saveLocalAnalysis(db, gameId, evals, deep: false);
         }
-        final deep = await runner.run(kDeepAnalysisTime, previous: evals, onProgress: emit);
+        final deep = await runner.run(
+          kDeepAnalysisTime,
+          previous: evals,
+          onProgress: throttled(kDeepAnalysisUpdates),
+        );
         if (deep == null) return;
+        emit(deep);
         await saveLocalAnalysis(db, gameId, deep, deep: true);
       } catch (e, st) {
         _logger.warning('Could not analyse $gameId', e, st);

@@ -8,7 +8,9 @@ import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/engine/evaluation_preferences.dart';
 import 'package:lichess_mobile/src/model/game/exported_game.dart';
 import 'package:lichess_mobile/src/model/game/player.dart';
+import 'package:lichess_mobile/src/model/progression/xp_rules.dart';
 import 'package:lichess_mobile/src/model/review/game_review.dart';
+import 'package:lichess_mobile/src/model/study_tracker/study_tracker.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/focus_detector.dart';
 import 'package:lichess_mobile/src/utils/immersive_mode.dart';
@@ -34,6 +36,7 @@ import 'package:lichess_mobile/src/view/game/exported_game_title.dart';
 import 'package:lichess_mobile/src/view/game/game_common_widgets.dart';
 import 'package:lichess_mobile/src/view/review/tag_move_sheet.dart';
 import 'package:lichess_mobile/src/view/study/add_pgn_to_study_screen.dart';
+import 'package:lichess_mobile/src/view/study_tracker/study_timer_setup.dart';
 import 'package:lichess_mobile/src/view/user/user_or_profile_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_action_sheet.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
@@ -592,6 +595,21 @@ class const _BottomBar({
           makeLabel: (context) => Text(context.l10n.flipBoard),
           onPressed: () => ref.read(analysisControllerProvider(options).notifier).toggleBoard(),
         ),
+        // Knightly: a study timer for this analysis session, floating over the app like a study's.
+        if (ref.read(studyTimerProvider) == null)
+          BottomSheetAction(
+            makeLabel: (context) => const Text('Start study timer'),
+            onPressed: () => showStartStudyTimerSheet(
+              context,
+              subtitle: switch (analysisState.archivedGame) {
+                final game? =>
+                  'Analysis of ${game.white.fullName(context.l10n)} vs '
+                      '${game.black.fullName(context.l10n)}',
+                null => 'Analysis board',
+              },
+              category: Discipline.analysis,
+            ),
+          ),
         if (analysisState.archivedGame case final game? when mySide != null)
           BottomSheetAction(
             makeLabel: (context) => const Text('Lessons learned'),

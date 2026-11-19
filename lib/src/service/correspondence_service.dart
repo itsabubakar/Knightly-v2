@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/account/ongoing_games_notifier.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
+import 'package:lichess_mobile/src/model/board_api/board_api.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/model/common/socket.dart';
@@ -85,7 +86,9 @@ class CorrespondenceService(final Logger _log, {required final Ref ref}) {
 
   /// Syncs offline correspondence games with the server.
   Future<void> syncGames() async {
-    if (_authUser == null) {
+    // Knightly: games are played through the Board API, which keeps no offline games; the mobile
+    // endpoints this syncs with need the official app's scope (403 "Missing scope").
+    if (_authUser == null || ref.read(useBoardApiProvider)) {
       return;
     }
 
@@ -128,6 +131,9 @@ class CorrespondenceService(final Logger _log, {required final Ref ref}) {
   ///
   /// Returns a [Future] that completes with the number of moves played.
   Future<int> playRegisteredMoves() async {
+    // Knightly: no moves are registered offline with the Board API (see [syncGames]).
+    if (ref.read(useBoardApiProvider)) return 0;
+
     _log.info('Playing registered correspondence moves...');
 
     final games = await (await _storage)

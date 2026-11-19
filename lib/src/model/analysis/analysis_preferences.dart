@@ -48,6 +48,11 @@ class AnalysisPreferences() extends Notifier<AnalysisPrefs> with PreferencesStor
     return save(state.copyWith(showPgnComments: !state.showPgnComments));
   }
 
+  /// Shows or hides the user's own comments on moves, apart from the computer's.
+  Future<void> toggleUserComments() {
+    return save(state.copyWith(showUserComments: !state.showUserComments));
+  }
+
   Future<void> toggleShowBestMoveArrow() {
     return save(state.copyWith(showBestMoveArrow: !state.showBestMoveArrow));
   }
@@ -68,6 +73,9 @@ sealed class const AnalysisPrefs._()
     required bool showBestMoveArrow,
     required bool showAnnotations,
     required bool showPgnComments,
+
+    /// Whether to show the user's own comments on moves (Knightly's), apart from the computer's.
+    @JsonKey(defaultValue: true) required bool showUserComments,
     @JsonKey(defaultValue: false) required bool inlineNotation,
   }) = _AnalysisPrefs;
 
@@ -78,6 +86,7 @@ sealed class const AnalysisPrefs._()
     showBestMoveArrow: false,
     showAnnotations: true,
     showPgnComments: true,
+    showUserComments: true,
     inlineNotation: false,
   );
 

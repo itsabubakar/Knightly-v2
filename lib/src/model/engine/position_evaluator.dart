@@ -3,9 +3,11 @@ import 'dart:math' as math;
 
 import 'package:dartchess/dartchess.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/eval.dart';
+import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/model/common/uci.dart';
 import 'package:lichess_mobile/src/model/engine/engine.dart';
 import 'package:lichess_mobile/src/model/engine/engine_budget.dart';
@@ -50,6 +52,43 @@ final positionEvaluatorProvider = NotifierProvider.autoDispose
       PositionEvaluator.new,
       name: 'PositionEvaluatorProvider',
     );
+
+/// The evaluations the user is waiting for, which background ones (see
+/// [EvaluationContext.isBackground]) wait for: the engine is shared, and the last caller takes it.
+///
+/// Knightly: without it, the game analysis running in the background and the analysis board's
+/// engine took the engine from each other at every move, which made the board lag.
+class ForegroundEvaluations() extends ChangeNotifier {
+  /// Until when the last foreground evaluation may be searching.
+  DateTime? _busyUntil;
+
+  /// The context of the last foreground evaluation.
+  StringId? _context;
+
+  /// Whether a foreground evaluation may be searching now.
+  bool get isBusy => _busyUntil != null && DateTime.now().isBefore(_busyUntil!);
+
+  /// An evaluation of [context] started, searching for up to [searchTime].
+  void started(StringId context, Duration searchTime) {
+    _context = context;
+    _busyUntil = DateTime.now().add(searchTime + const Duration(seconds: 1));
+    notifyListeners();
+  }
+
+  /// The evaluations of [context] stopped.
+  void stopped(StringId context) {
+    if (_context != context) return;
+    _busyUntil = null;
+    _context = null;
+    notifyListeners();
+  }
+}
+
+final foregroundEvaluationsProvider = Provider<ForegroundEvaluations>((ref) {
+  final evaluations = ForegroundEvaluations();
+  ref.onDispose(evaluations.dispose);
+  return evaluations;
+}, name: 'ForegroundEvaluationsProvider');
 
 /// The flavor the evaluator will use for [variant], played from [position].
 ///
@@ -106,9 +145,13 @@ class PositionEvaluator(
 
   @override
   EngineEvaluationState build() {
+    _foreground = ref.read(foregroundEvaluationsProvider);
     ref.onDispose(_dispose);
     return defaultState;
   }
+
+  /// Told about this evaluator's work, unless it's in the background.
+  late ForegroundEvaluations _foreground;
 
   /// How this device's engines share it.
   EngineBudget get budget => ref.read(engineBudgetProvider);
@@ -208,6 +251,7 @@ class PositionEvaluator(
       'searchTime=${work.searchTime.inMilliseconds}ms, threatMode=${work.threatMode}',
     );
 
+    if (!context.isBackground) _foreground.started(context.id, work.searchTime);
     _startWork(work);
 
     return evalStream.where((result) => result.$1 == work);
@@ -221,6 +265,7 @@ class PositionEvaluator(
   /// The engine stops computing further but the evaluation state is not cleared: it goes on
   /// reporting until its `bestmove`, and that last word on the position is worth having.
   void stop() {
+    if (!context.isBackground) _foreground.stopped(context.id);
     _currentSearch?.stop();
     _setEvalWork(null);
   }
@@ -238,6 +283,7 @@ class PositionEvaluator(
       return;
     }
     _logger.info('Pausing the engine');
+    if (!context.isBackground) _foreground.stopped(context.id);
     _paused = true;
     _currentSearch?.stop();
     _currentSearch = null;
@@ -665,6 +711,7 @@ class PositionEvaluator(
   }
 
   void _dispose() {
+    if (!context.isBackground) _foreground.stopped(context.id);
     _generation++;
     _cancelEvalThrottle();
     _releaseEngine();

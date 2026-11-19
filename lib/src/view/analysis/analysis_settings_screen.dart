@@ -51,6 +51,13 @@ class const AnalysisSettingsScreen(final AnalysisOptions options) extends Consum
                   onChanged: (value) =>
                       ref.read(analysisPreferencesProvider.notifier).toggleInlineNotation(),
                 ),
+                // Knightly: the user's own comments, apart from the computer's.
+                SwitchSettingTile(
+                  title: const Text('Show my comments'),
+                  value: prefs.showUserComments,
+                  onChanged: (_) =>
+                      ref.read(analysisPreferencesProvider.notifier).toggleUserComments(),
+                ),
                 SwitchSettingTile(
                   title: Text(context.l10n.mobileShowEngineLines),
                   value: prefs.showEngineLines,
@@ -92,7 +99,7 @@ class const AnalysisSettingsScreen(final AnalysisOptions options) extends Consum
                         ref.read(analysisPreferencesProvider.notifier).toggleAnnotations(),
                   ),
                   SwitchSettingTile(
-                    title: Text(context.l10n.mobileShowComments),
+                    title: const Text('Show computer comments'),
                     value: prefs.showPgnComments,
                     onChanged: (_) =>
                         ref.read(analysisPreferencesProvider.notifier).togglePgnComments(),

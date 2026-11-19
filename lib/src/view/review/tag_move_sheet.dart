@@ -5,6 +5,7 @@ import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/common/uci.dart';
 import 'package:lichess_mobile/src/model/engine/evaluation_preferences.dart';
 import 'package:lichess_mobile/src/model/game/exported_game.dart';
+import 'package:lichess_mobile/src/model/local_analysis/move_comments.dart';
 import 'package:lichess_mobile/src/model/review/game_review.dart';
 import 'package:lichess_mobile/src/model/review/game_tags.dart';
 import 'package:lichess_mobile/src/model/review/move_judgement.dart';
@@ -14,6 +15,7 @@ import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/view/review/tag_list_screen.dart';
 import 'package:lichess_mobile/src/widgets/adaptive_bottom_sheet.dart';
 import 'package:lichess_mobile/src/widgets/platform_alert_dialog.dart';
+import 'package:lichess_mobile/src/widgets/platform_tab_bar.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,7 +40,8 @@ String? analysisVerdict(Iterable<int>? nags) => switch (nags) {
   _ => null,
 };
 
-/// Puts tags on the move at [ply] of the user's game, and removes them.
+/// Puts tags on the move at [ply] of the user's game, and removes them; its Comment tab writes the
+/// user's comment on the move.
 ///
 /// Suggests what to tag from lichess's computer analysis ([verdict]), and from the engine of the
 /// analysis board, which compares the positions before and after the move.
@@ -62,9 +65,34 @@ class const TagMoveSheet({
   ConsumerState<TagMoveSheet> createState() => _TagMoveSheetState();
 }
 
-class _TagMoveSheetState() extends ConsumerState<TagMoveSheet> {
+class _TagMoveSheetState() extends ConsumerState<TagMoveSheet> with SingleTickerProviderStateMixin {
   /// Whether the engine is being asked to judge the move.
   bool _checking = false;
+
+  /// The Tag and Comment tabs.
+  late final _tabs = TabController(length: 2, vsync: this)..addListener(_onTabChanged);
+
+  /// The user's comment on the move, set from the analysis once it's loaded.
+  final _comment = TextEditingController();
+  bool _commentLoaded = false;
+
+  void _onTabChanged() {
+    if (!_tabs.indexIsChanging) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveComment(String text) async {
+    Navigator.of(context).pop();
+    await ref
+        .read(analysisControllerProvider(widget.options).notifier)
+        .setMoveComment(widget.path, text);
+  }
 
   /// Has the engine evaluate the position before the move, which it hasn't looked at yet: the
   /// board steps back to it, waits for a deep enough evaluation, and steps forward again.
@@ -101,83 +129,120 @@ class _TagMoveSheetState() extends ConsumerState<TagMoveSheet> {
         (judgement.verdict == .inaccuracy ||
             judgement.verdict == .mistake ||
             judgement.verdict == .blunder);
+    final branch = analysis?.root.branchesOn(widget.path).lastOrNull;
+    if (!_commentLoaded && branch != null) {
+      _comment.text = userMoveComment(branch);
+      _commentLoaded = true;
+    }
+    final hasComment = branch != null && userMoveComment(branch).isNotEmpty;
     return BottomSheetScrollableContainer(
       padding: const EdgeInsets.all(16.0),
       children: [
-        Text('Tag ${moveLabel(ply, san)}', style: Styles.title),
-        if (widget.verdict != null)
-          _Suggestion(
-            text:
-                "Lichess's analysis marks this move as a ${widget.verdict!.toLowerCase()}. "
-                'What went wrong?',
-          ),
-        if (judgement != null)
-          _Suggestion(
-            isMistake: engineSuggests,
-            text: [
-              'Engine: ${verdictLabel(judgement.verdict)}',
-              if (judgement.bestSan != null) 'best was ${judgement.bestSan}',
-              'depth ${judgement.depth}',
-            ].join(' · '),
-          )
-        else if (engineOn)
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0),
-            child: OutlinedButton.icon(
-              icon: _checking
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Symbols.memory),
-              label: Text(_checking ? 'Checking…' : 'Check with engine'),
-              onPressed: _checking ? null : _checkWithEngine,
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0),
-            child: Text(
-              'Turn the engine on in the bottom bar to have it judge this move.',
-              style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
-            ),
-          ),
-        for (final kind in TagKind.values) ...[
+        Text(moveLabel(ply, san), style: Styles.title),
+        const SizedBox(height: 8.0),
+        PlatformTabBar(
+          tabs: const ['Tag', 'Comment'],
+          controller: _tabs,
+          inAppBar: false,
+          glass: false,
+        ),
+        if (_tabs.index == 1) ...[
           const SizedBox(height: 16.0),
-          Text(kind.label, style: Styles.sectionTitle),
-          const SizedBox(height: 8.0),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
+          TextField(
+            key: const ValueKey('move-comment-field'),
+            controller: _comment,
+            minLines: 3,
+            maxLines: 8,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 12.0),
+          Row(
             children: [
-              for (final tag in tags.where((tag) => tag.kind == kind))
-                FilterChip(
-                  label: Text(tag.label),
-                  selected: selected.contains(tag.id),
-                  onSelected: review.hasValue
-                      ? (_) => ref
-                            .read(gameReviewProvider(info.gameId).notifier)
-                            .toggleTag(ply: ply, san: san, tagId: tag.id, info: info)
-                      : null,
-                ),
+              if (hasComment)
+                TextButton(onPressed: () => _saveComment(''), child: const Text('Delete')),
+              const Spacer(),
+              FilledButton(
+                onPressed: branch != null ? () => _saveComment(_comment.text) : null,
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ] else ...[
+          if (widget.verdict != null)
+            _Suggestion(
+              text:
+                  "Lichess's analysis marks this move as a ${widget.verdict!.toLowerCase()}. "
+                  'What went wrong?',
+            ),
+          if (judgement != null)
+            _Suggestion(
+              isMistake: engineSuggests,
+              text: [
+                'Engine: ${verdictLabel(judgement.verdict)}',
+                if (judgement.bestSan != null) 'best was ${judgement.bestSan}',
+                'depth ${judgement.depth}',
+              ].join(' · '),
+            )
+          else if (engineOn)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: OutlinedButton.icon(
+                icon: _checking
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Symbols.memory),
+                label: Text(_checking ? 'Checking…' : 'Check with engine'),
+                onPressed: _checking ? null : _checkWithEngine,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Text(
+                'Turn the engine on in the bottom bar to have it judge this move.',
+                style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
+              ),
+            ),
+          for (final kind in TagKind.values) ...[
+            const SizedBox(height: 16.0),
+            Text(kind.label, style: Styles.sectionTitle),
+            const SizedBox(height: 8.0),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: [
+                for (final tag in tags.where((tag) => tag.kind == kind))
+                  FilterChip(
+                    label: Text(tag.label),
+                    selected: selected.contains(tag.id),
+                    onSelected: review.hasValue
+                        ? (_) => ref
+                              .read(gameReviewProvider(info.gameId).notifier)
+                              .toggleTag(ply: ply, san: san, tagId: tag.id, info: info)
+                        : null,
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16.0),
+          Row(
+            children: [
+              Text(
+                '+$kMoveTaggedXp XP per tag',
+                style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                icon: const Icon(Symbols.edit),
+                label: const Text('Edit tags'),
+                onPressed: () => Navigator.of(context).push(TagListScreen.buildRoute()),
+              ),
             ],
           ),
         ],
-        const SizedBox(height: 16.0),
-        Row(
-          children: [
-            Text(
-              '+$kMoveTaggedXp XP per tag',
-              style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
-            ),
-            const Spacer(),
-            TextButton.icon(
-              icon: const Icon(Symbols.edit),
-              label: const Text('Edit tags'),
-              onPressed: () => Navigator.of(context).push(TagListScreen.buildRoute()),
-            ),
-          ],
-        ),
       ],
     );
   }

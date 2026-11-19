@@ -98,24 +98,38 @@ class _StudyTimerSetupState() extends State<StudyTimerSetup> {
   }
 }
 
-/// Shows the sheet that starts a study timer for [study]; [onStarted] runs once it's started
-/// (e.g. to open the study).
+/// Shows the sheet that starts a study timer for [study], or for what [subtitle] says (e.g. an
+/// analysis) studying [category]; [onStarted] runs once it's started (e.g. to open the study).
 Future<void> showStartStudyTimerSheet(
   BuildContext context, {
-  required StudyRef study,
+  StudyRef? study,
+  String? subtitle,
+  Discipline category = Discipline.openings,
   VoidCallback? onStarted,
 }) {
   return showAdaptiveBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useRootNavigator: true,
-    builder: (_) => StartStudyTimerSheet(study: study, onStarted: onStarted),
+    builder: (_) => StartStudyTimerSheet(
+      study: study,
+      subtitle: subtitle,
+      category: category,
+      onStarted: onStarted,
+    ),
   );
 }
 
-/// Starts a study timer for a lichess study; tells when one is already running.
+/// Starts a study timer for a lichess study, or another session (an analysis); tells when one is
+/// already running.
 class const StartStudyTimerSheet({
-  required final StudyRef study,
+  final StudyRef? study,
+
+  /// What is studied, shown under the title when it isn't a lichess [study].
+  final String? subtitle,
+
+  /// The category picked first.
+  final Discipline category = Discipline.openings,
   final VoidCallback? onStarted,
   super.key,
 }) extends ConsumerWidget {
@@ -133,7 +147,7 @@ class const StartStudyTimerSheet({
             const Text('Study timer', style: Styles.title),
             const SizedBox(height: 4.0),
             Text(
-              study.name,
+              study?.name ?? subtitle ?? '',
               style: TextStyle(color: scheme.onSurfaceVariant),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -154,7 +168,7 @@ class const StartStudyTimerSheet({
               ),
             ] else
               StudyTimerSetup(
-                initialCategory: Discipline.openings,
+                initialCategory: category,
                 onStart: (mode, category, planned) async {
                   await ref
                       .read(studyTimerProvider.notifier)

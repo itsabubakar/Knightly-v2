@@ -16,5 +16,10 @@ sealed class EvaluationContext with _$EvaluationContext {
 
     /// The engine to evaluate with, instead of the one the user chose in the settings.
     ChessEnginePref? enginePref,
+
+    /// Whether nobody is waiting for these evaluations (Knightly's game analysis, made in the
+    /// background): they wait for the others, rather than taking the shared engine from them (see
+    /// [ForegroundEvaluations]).
+    @Default(false) bool isBackground,
   }) = _EvaluationContext;
 }

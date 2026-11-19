@@ -151,6 +151,13 @@ class const DebouncedPgnTreeView({
   /// Whether to show comments associated with the moves.
   final bool shouldShowComments = true,
 
+  /// Whether to show the user's own comments (Knightly's), apart from the computer's.
+  ///
+  /// When `null`, all the comments are the same, shown by [shouldShowComments]. Otherwise the
+  /// computer's comments are shown by [shouldShowComments], and the user's by this, in their own
+  /// style.
+  final bool? shouldShowUserComments,
+
   /// Display mode of the tree view.
   ///
   /// Either [PgnTreeDisplayMode.twoColumn] or [PgnTreeDisplayMode.inlineNotation].
@@ -249,6 +256,7 @@ class _DebouncedPgnTreeViewState() extends ConsumerState<DebouncedPgnTreeView> {
         shouldShowComputerAnalysis: widget.shouldShowComputerAnalysis,
         shouldShowAnnotations: widget.shouldShowAnnotations,
         shouldShowComments: widget.shouldShowComments,
+        shouldShowUserComments: widget.shouldShowUserComments,
         currentMoveKey: currentMoveKey,
         pathToCurrentMove: pathToCurrentMove,
         pathToLiveMove: pathToLiveMove,
@@ -287,6 +295,10 @@ typedef _PgnTreeViewParams = ({
   /// Whether to show comments associated with the moves.
   bool shouldShowComments,
 
+  /// Whether to show the user's own comments, apart from the computer's (see
+  /// [DebouncedPgnTreeView.shouldShowUserComments]).
+  bool? shouldShowUserComments,
+
   /// How the moves in the tree should be displayed.
   PgnTreeDisplayMode displayMode,
 
@@ -297,6 +309,25 @@ typedef _PgnTreeViewParams = ({
   /// Callbacks for when the user interacts with the tree view, e.g. selecting a different move.
   PgnTreeNotifier? notifier,
 });
+
+/// The comments of [node] shown in the tree, and whether each is the user's own.
+Iterable<({String text, bool isUser})> _shownComments(ViewNode node, _PgnTreeViewParams params) {
+  if (node is! ViewBranch) return const [];
+  final separate = params.shouldShowUserComments != null;
+  final showOthers = separate ? params.shouldShowUserComments! : params.shouldShowComments;
+  return [
+    if (params.shouldShowComments)
+      for (final comment in node.lichessAnalysisComments ?? const IListConst<PgnComment>([]))
+        if (comment.text?.isNotEmpty == true) (text: comment.text!, isUser: false),
+    if (showOthers)
+      for (final comment in node.comments ?? const IListConst<PgnComment>([]))
+        if (comment.text?.isNotEmpty == true) (text: comment.text!, isUser: separate),
+  ];
+}
+
+/// Whether [node] has comments shown in the tree.
+bool _hasShownComment(ViewNode node, _PgnTreeViewParams params) =>
+    _shownComments(node, params).isNotEmpty;
 
 /// Filter node children when computer analysis is disabled
 IList<ViewBranch> _filteredChildren(ViewNode node, bool shouldShowComputerAnalysis) {
@@ -320,8 +351,8 @@ bool _hasNonInlineSideLine(ViewNode node, _PgnTreeViewParams params, {required b
   return isMainline && params.displayMode == PgnTreeDisplayMode.twoColumn
       ? children.length >= 2 ||
             (params.shouldShowComputerAnalysis &&
-                params.shouldShowComments &&
-                children.firstOrNull?.hasTextComment == true)
+                children.isNotEmpty &&
+                _hasShownComment(children.first, params))
       : children.length > 2 || (children.length == 2 && !_displaySideLineAsInline(children[1]));
 }
 
@@ -466,6 +497,7 @@ class _PgnTreeViewState() extends State<_PgnTreeView> {
           oldWidget.params.premovePaths != widget.params.premovePaths ||
           oldWidget.params.shouldShowComputerAnalysis != widget.params.shouldShowComputerAnalysis ||
           oldWidget.params.shouldShowComments != widget.params.shouldShowComments ||
+          oldWidget.params.shouldShowUserComments != widget.params.shouldShowUserComments ||
           oldWidget.params.shouldShowAnnotations != widget.params.shouldShowAnnotations ||
           oldWidget.params.displayMode != widget.params.displayMode,
     );
@@ -488,7 +520,12 @@ class _PgnTreeViewState() extends State<_PgnTreeView> {
               horizontal: kViewHorizontalPadding,
             ),
             child: Text.rich(
-              TextSpan(children: _comments(rootComments, textStyle: _baseTextStyle)),
+              TextSpan(
+                children: _comments(
+                  rootComments.map((text) => (text: text, isUser: false)),
+                  textStyle: _baseTextStyle,
+                ),
+              ),
             ),
           ),
         ...subtrees
@@ -528,7 +565,7 @@ List<InlineSpan> _buildInlineSideLine({
           node,
           lineInfo: (
             type: _LineType.inlineSideline,
-            startLine: i == 0 || (params.shouldShowComments && sidelineNodes[i - 1].hasTextComment),
+            startLine: i == 0 || _hasShownComment(sidelineNodes[i - 1], params),
             pathToLine: initialPath,
           ),
           pathToNode: pathToNode,
@@ -586,8 +623,7 @@ List<InlineSpan> _moveWithComment(
         params: params,
       ),
     ),
-    if (params.shouldShowComments && branch.hasTextComment)
-      ..._comments(branch.textComments, textStyle: textStyle),
+    ..._comments(_shownComments(branch, params), textStyle: textStyle),
   ];
 }
 
@@ -631,7 +667,7 @@ class _SideLinePart(
             node.children.first,
             lineInfo: (
               type: _LineType.sideline,
-              startLine: params.shouldShowComments && node.hasTextComment,
+              startLine: _hasShownComment(node, params),
               pathToLine: initialPath,
             ),
             pathToNode: path,
@@ -700,7 +736,7 @@ class const _TwoColumnMainlinePart({
           textStyle: textStyle,
           lineInfo: (
             type: _LineType.mainline,
-            startLine: i == 0 || (params.shouldShowComments && (node as ViewBranch).hasTextComment),
+            startLine: i == 0 || _hasShownComment(node, params),
             pathToLine: initialPath,
           ),
           path: path + mainlineNode.id,
@@ -777,11 +813,13 @@ class const _TwoColumnMainlinePart({
             ],
           ),
         ),
-        if (params.shouldShowComments && lastBranch?.hasTextComment == true)
+        if (lastBranch != null && _hasShownComment(lastBranch, params))
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: kViewHorizontalPadding),
             child: Text.rich(
-              TextSpan(children: _comments(lastBranch!.textComments, textStyle: textStyle)),
+              TextSpan(
+                children: _comments(_shownComments(lastBranch, params), textStyle: textStyle),
+              ),
             ),
           ),
       ],
@@ -828,9 +866,7 @@ class const _InlineNotationMainlinePart({
                     mainlineNode,
                     lineInfo: (
                       type: _LineType.mainline,
-                      startLine:
-                          i == 0 ||
-                          (params.shouldShowComments && (node as ViewBranch).hasTextComment),
+                      startLine: i == 0 || _hasShownComment(node, params),
                       pathToLine: initialPath,
                     ),
                     pathToNode: path,
@@ -1450,11 +1486,24 @@ class _MoveCommentSheetState() extends State<MoveCommentSheet> {
   }
 }
 
-List<TextSpan> _comments(Iterable<String> comments, {required TextStyle textStyle}) => comments
-    .map(
-      (comment) => TextSpan(
-        text: comment,
-        style: textStyle.copyWith(fontSize: textStyle.fontSize! - 2.0),
-      ),
-    )
-    .toList(growable: false);
+/// The comments shown after a move; the user's own are in italics, with a pen before them.
+List<InlineSpan> _comments(
+  Iterable<({String text, bool isUser})> comments, {
+  required TextStyle textStyle,
+}) {
+  final style = textStyle.copyWith(fontSize: textStyle.fontSize! - 2.0);
+  return [
+    for (final comment in comments)
+      if (comment.isUser) ...[
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Icon(Icons.edit_note, size: style.fontSize! + 2.0, color: style.color),
+        ),
+        TextSpan(
+          text: ' ${comment.text} ',
+          style: style.copyWith(fontStyle: FontStyle.italic),
+        ),
+      ] else
+        TextSpan(text: comment.text, style: style),
+  ];
+}

@@ -157,6 +157,22 @@ moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is K
 - [~] The debug build has its own sign in link (`app.knightly.debug`), so it can't take the
   release app's sign in
 
+Fixes after the first phone test (2026-11-19):
+
+- [~] The tag move sheet has two tabs, Tag and Comment, so a tagged move gets its comment there
+- [~] The user's comments are apart from the computer's in the move list (italics, a pen before
+  them), with their own switch in the analysis settings ("Show my comments"); "Show computer
+  comments" no longer hides them
+- [~] The background analysis no longer fights the analysis board's engine (they share one
+  Stockfish): it waits while the user's engine is evaluating, and goes again over a position the
+  user interrupted; it shows its progress every second (quick pass) or five (deep pass) rather
+  than after every position, each update rebuilding the move list; a position the engine is done
+  with early (a mate) isn't waited on until the timeout
+- [~] No more correspondence sync with lichess's mobile endpoints (403 "Missing scope" in the logs):
+  the Board API keeps no offline games
+- [~] A study timer for analysis sessions: "Start study timer" in the analysis board's menu,
+  Analysis as the category
+
 ## Phase 8: Daily goals
 
 - [ ] Set daily training activities (e.g. 1 Rapid game, 10 puzzles, 20 minutes of endgames),

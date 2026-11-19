@@ -27,11 +27,18 @@ const kDeepAnalysisTime = Duration(milliseconds: 1200);
 /// How long the engine may take to start, before the first position.
 const _kEngineStartTime = Duration(seconds: 20);
 
+/// How often a paused analysis checks whether the engine is free again.
+const kAnalysisPauseCheck = Duration(milliseconds: 500);
+
 /// The engine's evaluation of each position of a game, the starting one first.
 typedef GameEvals = List<PositionEval?>;
 
 /// Evaluates every position of a game (the [initial] one, then after each of [moves]) with the
 /// phone's engine.
+///
+/// It runs in the background: while the user's own evaluations (the analysis board's engine) are
+/// running, it waits, and a position they interrupt is evaluated again (see
+/// [ForegroundEvaluations]).
 class LocalAnalysisRunner({
   required final Ref ref,
   required final GameId gameId,
@@ -57,7 +64,9 @@ class LocalAnalysisRunner({
       id: StringId('knightly-analysis-$gameId'),
       variant: variant,
       initialPosition: initial,
+      isBackground: true,
     );
+    final foreground = ref.read(foregroundEvaluationsProvider);
     // Keeps the evaluator while the analysis runs.
     final keepAlive = ref.listen(positionEvaluatorProvider(context), (_, _) {});
     try {
@@ -93,11 +102,27 @@ class LocalAnalysisRunner({
             initialPosition: initial,
             steps: steps.toIList(),
           );
-          eval = await _evaluate(
-            ref.read(positionEvaluatorProvider(context).notifier),
-            work,
-            timeout: searchTime + (engineStarted ? const Duration(seconds: 3) : _kEngineStartTime),
-          );
+          PositionEval? found;
+          while (true) {
+            // The engine is the user's while they use it.
+            while (foreground.isBusy) {
+              await Future<void>.delayed(kAnalysisPauseCheck);
+              if (_cancelled) return null;
+            }
+            final (result, interrupted) = await _evaluate(
+              context,
+              work,
+              foreground,
+              timeout:
+                  searchTime + (engineStarted ? const Duration(seconds: 3) : _kEngineStartTime),
+            );
+            if (_cancelled) return null;
+            if (!interrupted) {
+              found = result;
+              break;
+            }
+          }
+          eval = found;
           engineStarted = engineStarted || eval != null;
         }
         // A position the engine didn't answer about keeps what was known (the quick pass's, or the
@@ -113,15 +138,49 @@ class LocalAnalysisRunner({
     }
   }
 
-  Future<PositionEval?> _evaluate(
-    PositionEvaluator evaluator,
-    EvalWork work, {
+  /// The evaluation of [work], and whether the user's own evaluations interrupted it (it is then
+  /// worth nothing: the engine went to them).
+  ///
+  /// It's over when the engine has searched for the time asked, or has stopped before (a position
+  /// it has seen through, e.g. a mate).
+  Future<(PositionEval?, bool)> _evaluate(
+    EvaluationContext context,
+    EvalWork work,
+    ForegroundEvaluations foreground, {
     required Duration timeout,
   }) async {
     final done = Completer<void>();
+    var interrupted = false;
+    void onForeground() {
+      if (!foreground.isBusy || done.isCompleted) return;
+      interrupted = true;
+      done.complete();
+    }
+
     LocalEval? last;
+    foreground.addListener(onForeground);
+    var searched = false;
+    var searchEnded = false;
+    void endSoon() {
+      // The engine's last words come throttled, after its search.
+      Timer(kEngineEvalEmissionThrottleDelay * 2, () {
+        if (!done.isCompleted) done.complete();
+      });
+    }
+
+    final searching = ref.listen(positionEvaluatorProvider(context), (_, state) {
+      if (state.isComputing) {
+        searched = true;
+      } else if (searched && !searchEnded) {
+        searchEnded = true;
+        if (last != null) endSoon();
+      }
+    });
+    final evaluator = ref.read(positionEvaluatorProvider(context).notifier);
     final subscription = evaluator.evaluate(work).listen((result) {
+      final isFirst = last == null;
       last = result.$2;
+      if (isFirst && searchEnded) endSoon();
       if (result.$2.searchTime >= work.searchTime * 0.9 && !done.isCompleted) done.complete();
     });
     try {
@@ -129,12 +188,17 @@ class LocalAnalysisRunner({
     } on TimeoutException {
       _logger.fine('No full evaluation at ply ${work.position.ply}, using what came');
     } finally {
+      foreground.removeListener(onForeground);
+      searching.close();
       await subscription.cancel();
     }
     final eval = last;
-    if (eval == null) return null;
+    if (interrupted || eval == null) return (null, interrupted);
     final pv = eval.pvs.firstOrNull;
-    return (cp: eval.mate == null ? eval.cp : null, mate: eval.mate, pv: pv?.moves.toList() ?? []);
+    return (
+      (cp: eval.mate == null ? eval.cp : null, mate: eval.mate, pv: pv?.moves.toList() ?? []),
+      false,
+    );
   }
 }
 
