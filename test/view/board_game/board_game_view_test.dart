@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dartchess/dartchess.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lichess_mobile/src/model/account/account_preferences.dart';
@@ -12,6 +13,7 @@ import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
 import 'package:lichess_mobile/src/view/board_game/board_game_view.dart';
 import 'package:lichess_mobile/src/view/game/correspondence_clock_widget.dart';
+import 'package:lichess_mobile/src/view/game/game_player.dart';
 import 'package:lichess_mobile/src/view/game/game_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/settings/board_settings_screen.dart';
@@ -399,6 +401,72 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(api.posts.map((p) => p.$1), contains('/api/board/game/abcdefgh/move/g1f3'));
 
+    await closeGame(tester);
+  });
+
+  testWidgets('move confirmation: a correspondence move waits for the confirmation', (
+    tester,
+  ) async {
+    await openGame(
+      tester,
+      gameFull: gameFullJson(
+        moves: 'e2e4 e7e5',
+        daysPerTurn: 3,
+        wtime: const Duration(days: 2).inMilliseconds,
+        btime: const Duration(days: 3).inMilliseconds,
+      ),
+      defaultPreferences: {
+        'knightly.accountPrefOverrides': jsonEncode({
+          'submitMove': SubmitMove([SubmitMoveChoice.correspondence]).value,
+        }),
+      },
+    );
+    // Cancel, then accept.
+    final confirmButton = find.descendant(
+      of: find.byType(ConfirmMove),
+      matching: find.byType(Icon),
+    );
+    List<String> moves() => [
+      for (final post in api.posts)
+        if (post.$1.contains('/move/')) post.$1,
+    ];
+
+    // Cancelled: nothing sent, the knight back home.
+    await playMove(tester, 'g1', 'f3');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ConfirmMove), findsOneWidget);
+    expect(boardHasPiece(tester, Square.f3, Piece.whiteKnight), isTrue);
+    expect(moves(), isEmpty);
+    await tester.tap(confirmButton.first);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ConfirmMove), findsNothing);
+    expect(boardHasPiece(tester, Square.g1, Piece.whiteKnight), isTrue);
+    expect(moves(), isEmpty);
+
+    // Confirmed: sent.
+    await playMove(tester, 'g1', 'f3');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(confirmButton.last);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ConfirmMove), findsNothing);
+    expect(moves(), ['/api/board/game/abcdefgh/move/g1f3']);
+
+    await closeGame(tester);
+  });
+
+  testWidgets('move confirmation: not asked in a game type the setting leaves out', (tester) async {
+    await openGame(
+      tester,
+      defaultPreferences: {
+        'knightly.accountPrefOverrides': jsonEncode({
+          'submitMove': SubmitMove([SubmitMoveChoice.correspondence]).value,
+        }),
+      },
+    );
+    await playMove(tester, 'g1', 'f3');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ConfirmMove), findsNothing);
+    expect(api.posts.map((p) => p.$1), contains('/api/board/game/abcdefgh/move/g1f3'));
     await closeGame(tester);
   });
 

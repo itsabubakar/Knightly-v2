@@ -32,6 +32,7 @@ import 'package:lichess_mobile/src/utils/immersive_mode.dart';
 import 'package:lichess_mobile/src/view/analysis/analysis_screen.dart';
 import 'package:lichess_mobile/src/view/board_game/game_xp_card.dart';
 import 'package:lichess_mobile/src/view/game/correspondence_clock_widget.dart';
+import 'package:lichess_mobile/src/view/game/game_player.dart' show ConfirmMove;
 import 'package:lichess_mobile/src/view/game/game_screen.dart';
 import 'package:lichess_mobile/src/view/game/game_screen_providers.dart';
 import 'package:lichess_mobile/src/view/play/play_lichess_ai_sheet.dart';
@@ -96,6 +97,10 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
 
   /// How many chat messages the user has seen.
   int _chatSeen = 0;
+
+  /// The move waiting for the user's confirmation (the "Move confirmation" setting), and the ply
+  /// it was played at: it's dropped once the game has moved on.
+  ({Move move, int ply})? _moveToConfirm;
 
   @override
   void initState() {
@@ -394,17 +399,38 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
         AsyncData(:final value) => game.takebacksAllowed(value.takeback),
         _ => false,
       };
+      final confirmsMoves = switch (ref.watch(accountPreferencesProvider)) {
+        AsyncData(:final value) => game.confirmsMoves(value.submitMove),
+        _ => false,
+      };
       final viewPly = _viewPly != null && _viewPly! < lastPly ? _viewPly : null;
-      final position = viewPly != null ? game.positions[viewPly] : game.position;
+      final moveToConfirm = switch (_moveToConfirm) {
+        (:final move, :final ply) when ply == lastPly && game.isMyTurn => move,
+        _ => null,
+      };
+      final livePosition = moveToConfirm != null
+          ? game.position.playUnchecked(moveToConfirm)
+          : game.position;
+      final position = viewPly != null ? game.positions[viewPly] : livePosition;
       // The board stays interactive on the opponent's turn: a move then is a premove (if enabled
       // in the board settings), played as soon as the opponent's move arrives.
-      final interactive = viewPly == null && !game.isOver && game.mySide != null;
-      void play(Move move) =>
+      final interactive =
+          viewPly == null && !game.isOver && game.mySide != null && moveToConfirm == null;
+      void send(Move move) =>
           unawaited(_run(() => _controller.userMove(move), 'The move was not accepted.'));
+      // A move on the user's turn waits for its confirmation when the setting asks for it; a
+      // premove doesn't, as on lichess.
+      void play(Move move) {
+        if (confirmsMoves && game.isMyTurn && game.position.isLegal(move)) {
+          setState(() => _moveToConfirm = (move: move, ply: lastPly));
+        } else {
+          send(move);
+        }
+      }
 
       layout = GameLayout(
         orientation: bottomSide,
-        onPremove: play,
+        onPremove: send,
         boardParams: interactive
             ? GameBoardParams.interactive(
                 variant: game.variant,
@@ -416,7 +442,7 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
             : GameBoardParams.readonly(
                 variant: game.variant,
                 position: position,
-                lastMove: viewPly == null ? game.lastMove : null,
+                lastMove: viewPly == null ? moveToConfirm ?? game.lastMove : null,
               ),
         topTable: BoardGamePlayer(
           game: game,
@@ -433,6 +459,17 @@ class _BoardGameViewState() extends ConsumerState<BoardGameView> {
               side: bottomSide,
               timeLeft: game.timeLeft(bottomSide, now),
             ),
+            if (moveToConfirm != null && viewPly == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: ConfirmMove(
+                  onConfirm: () {
+                    setState(() => _moveToConfirm = null);
+                    send(moveToConfirm);
+                  },
+                  onCancel: () => setState(() => _moveToConfirm = null),
+                ),
+              ),
             if (game.isOver) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),

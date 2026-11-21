@@ -140,6 +140,19 @@ sealed class const BoardGameState._() with _$BoardGameState {
   /// A correspondence game: days per turn, or no time limit at all.
   bool get isCorrespondence => clock == null;
 
+  /// Whether the user's "Move confirmation" setting [pref] asks to confirm moves in this game.
+  bool confirmsMoves(SubmitMove pref) {
+    final choice = switch (speed) {
+      _ when clock == null && daysPerTurn == null => SubmitMoveChoice.unlimited,
+      _ when clock == null => SubmitMoveChoice.correspondence,
+      'classical' => SubmitMoveChoice.classical,
+      'rapid' => SubmitMoveChoice.rapid,
+      'blitz' => SubmitMoveChoice.blitz,
+      _ => null,
+    };
+    return choice != null && pref.choices.contains(choice);
+  }
+
   /// The moves as PGN, from the starting position (given as a FEN when it's not the usual one).
   String get pgn {
     final initial = positions.first;

@@ -130,7 +130,7 @@ moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is K
   opens on its own
 - [~] A live game that starts or is going on opens on its own (seek pairing, accepted challenge,
   tournament pairing, a game left open when the app closed)
-- [ ] Not done yet: premoves, chat, berserk, rematch, move confirmation, the game's sounds on low
+- [ ] Not done yet: berserk, the game's sounds on low
   time; cancelling a correspondence seek (uses the websocket)
 
 ### Phase 7b: game screen and analysis (decided 2026-11-18; built, testing on the phone)
@@ -172,6 +172,9 @@ Fixes after the first phone test (2026-11-19):
   the Board API keeps no offline games
 - [~] A study timer for analysis sessions: "Start study timer" in the analysis board's menu,
   Analysis as the category
+- [~] Move confirmation in Knightly's game screen, following the "Move confirmation" setting for
+  each kind of game (correspondence, unlimited, classical, rapid, blitz): the move shows on the
+  board with cancel and confirm buttons; premoves aren't asked about
 
 ## Phase 8: Daily goals
 

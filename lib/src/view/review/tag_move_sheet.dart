@@ -74,16 +74,27 @@ class _TagMoveSheetState() extends ConsumerState<TagMoveSheet> with SingleTicker
 
   /// The user's comment on the move, set from the analysis once it's loaded.
   final _comment = TextEditingController();
+  final _commentFocus = FocusNode();
   bool _commentLoaded = false;
 
+  /// The Comment tab opens the keyboard on its field; the Tag tab closes it.
   void _onTabChanged() {
-    if (!_tabs.indexIsChanging) setState(() {});
+    if (_tabs.indexIsChanging) return;
+    setState(() {});
+    if (_tabs.index == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _commentFocus.requestFocus();
+      });
+    } else {
+      _commentFocus.unfocus();
+    }
   }
 
   @override
   void dispose() {
     _tabs.dispose();
     _comment.dispose();
+    _commentFocus.dispose();
     super.dispose();
   }
 
@@ -135,115 +146,120 @@ class _TagMoveSheetState() extends ConsumerState<TagMoveSheet> with SingleTicker
       _commentLoaded = true;
     }
     final hasComment = branch != null && userMoveComment(branch).isNotEmpty;
-    return BottomSheetScrollableContainer(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        Text(moveLabel(ply, san), style: Styles.title),
-        const SizedBox(height: 8.0),
-        PlatformTabBar(
-          tabs: const ['Tag', 'Comment'],
-          controller: _tabs,
-          inAppBar: false,
-          glass: false,
-        ),
-        if (_tabs.index == 1) ...[
-          const SizedBox(height: 16.0),
-          TextField(
-            key: const ValueKey('move-comment-field'),
-            controller: _comment,
-            minLines: 3,
-            maxLines: 8,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+    // Above the keyboard while the comment is written.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: BottomSheetScrollableContainer(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          Text(moveLabel(ply, san), style: Styles.title),
+          const SizedBox(height: 8.0),
+          PlatformTabBar(
+            tabs: const ['Tag', 'Comment'],
+            controller: _tabs,
+            inAppBar: false,
+            glass: false,
           ),
-          const SizedBox(height: 12.0),
-          Row(
-            children: [
-              if (hasComment)
-                TextButton(onPressed: () => _saveComment(''), child: const Text('Delete')),
-              const Spacer(),
-              FilledButton(
-                onPressed: branch != null ? () => _saveComment(_comment.text) : null,
-                child: const Text('Save'),
+          if (_tabs.index == 1) ...[
+            const SizedBox(height: 16.0),
+            TextField(
+              key: const ValueKey('move-comment-field'),
+              controller: _comment,
+              focusNode: _commentFocus,
+              minLines: 3,
+              maxLines: 8,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12.0),
+            Row(
+              children: [
+                if (hasComment)
+                  TextButton(onPressed: () => _saveComment(''), child: const Text('Delete')),
+                const Spacer(),
+                FilledButton(
+                  onPressed: branch != null ? () => _saveComment(_comment.text) : null,
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ] else ...[
+            if (widget.verdict != null)
+              _Suggestion(
+                text:
+                    "Lichess's analysis marks this move as a ${widget.verdict!.toLowerCase()}. "
+                    'What went wrong?',
+              ),
+            if (judgement != null)
+              _Suggestion(
+                isMistake: engineSuggests,
+                text: [
+                  'Engine: ${verdictLabel(judgement.verdict)}',
+                  if (judgement.bestSan != null) 'best was ${judgement.bestSan}',
+                  'depth ${judgement.depth}',
+                ].join(' · '),
+              )
+            else if (engineOn)
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: OutlinedButton.icon(
+                  icon: _checking
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Symbols.memory),
+                  label: Text(_checking ? 'Checking…' : 'Check with engine'),
+                  onPressed: _checking ? null : _checkWithEngine,
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: Text(
+                  'Turn the engine on in the bottom bar to have it judge this move.',
+                  style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
+                ),
+              ),
+            for (final kind in TagKind.values) ...[
+              const SizedBox(height: 16.0),
+              Text(kind.label, style: Styles.sectionTitle),
+              const SizedBox(height: 8.0),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  for (final tag in tags.where((tag) => tag.kind == kind))
+                    FilterChip(
+                      label: Text(tag.label),
+                      selected: selected.contains(tag.id),
+                      onSelected: review.hasValue
+                          ? (_) => ref
+                                .read(gameReviewProvider(info.gameId).notifier)
+                                .toggleTag(ply: ply, san: san, tagId: tag.id, info: info)
+                          : null,
+                    ),
+                ],
               ),
             ],
-          ),
-        ] else ...[
-          if (widget.verdict != null)
-            _Suggestion(
-              text:
-                  "Lichess's analysis marks this move as a ${widget.verdict!.toLowerCase()}. "
-                  'What went wrong?',
-            ),
-          if (judgement != null)
-            _Suggestion(
-              isMistake: engineSuggests,
-              text: [
-                'Engine: ${verdictLabel(judgement.verdict)}',
-                if (judgement.bestSan != null) 'best was ${judgement.bestSan}',
-                'depth ${judgement.depth}',
-              ].join(' · '),
-            )
-          else if (engineOn)
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0),
-              child: OutlinedButton.icon(
-                icon: _checking
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Symbols.memory),
-                label: Text(_checking ? 'Checking…' : 'Check with engine'),
-                onPressed: _checking ? null : _checkWithEngine,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0),
-              child: Text(
-                'Turn the engine on in the bottom bar to have it judge this move.',
-                style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
-              ),
-            ),
-          for (final kind in TagKind.values) ...[
             const SizedBox(height: 16.0),
-            Text(kind.label, style: Styles.sectionTitle),
-            const SizedBox(height: 8.0),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
+            Row(
               children: [
-                for (final tag in tags.where((tag) => tag.kind == kind))
-                  FilterChip(
-                    label: Text(tag.label),
-                    selected: selected.contains(tag.id),
-                    onSelected: review.hasValue
-                        ? (_) => ref
-                              .read(gameReviewProvider(info.gameId).notifier)
-                              .toggleTag(ply: ply, san: san, tagId: tag.id, info: info)
-                        : null,
-                  ),
+                Text(
+                  '+$kMoveTaggedXp XP per tag',
+                  style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  icon: const Icon(Symbols.edit),
+                  label: const Text('Edit tags'),
+                  onPressed: () => Navigator.of(context).push(TagListScreen.buildRoute()),
+                ),
               ],
             ),
           ],
-          const SizedBox(height: 16.0),
-          Row(
-            children: [
-              Text(
-                '+$kMoveTaggedXp XP per tag',
-                style: TextStyle(color: ColorScheme.of(context).onSurfaceVariant),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                icon: const Icon(Symbols.edit),
-                label: const Text('Edit tags'),
-                onPressed: () => Navigator.of(context).push(TagListScreen.buildRoute()),
-              ),
-            ],
-          ),
         ],
-      ],
+      ),
     );
   }
 }
