@@ -59,6 +59,9 @@ class const GameRepository(
     UserId userId, {
     int max = 20,
     DateTime? until,
+
+    /// Only the games played since then.
+    DateTime? since,
     GameFilterState filter = const GameFilterState(),
     bool withBookmarked = false,
     bool withMoves = false,
@@ -74,6 +77,7 @@ class const GameRepository(
             queryParameters: {
               'max': max.toString(),
               if (until != null) 'until': until.millisecondsSinceEpoch.toString(),
+              if (since != null) 'since': since.millisecondsSinceEpoch.toString(),
               'moves': withMoves ? 'true' : 'false',
               'lastFen': 'true',
               'accuracy': 'true',

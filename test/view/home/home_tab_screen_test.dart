@@ -184,6 +184,9 @@ void main() {
 
       expect(nbUserGamesRequests, 1);
       expect(find.text('About Lichess...'), findsNothing);
+      // Below the Training card: scrolled to.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Recent games'), findsOneWidget);
       expect(find.byType(GameListTile), findsNWidgets(3));
       expect(find.text('MightyNanook'), findsOneWidget);
@@ -313,6 +316,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('About Lichess...'), findsNothing);
+      // Below the Training card: scrolled to.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Recent games'), findsOneWidget);
       expect(find.byType(GameListTile), findsNWidgets(3));
     });
@@ -453,6 +459,9 @@ void main() {
       expect(find.byType(AccountPerfCards), findsNothing);
 
       // ...but the locally stored games are still listed below it.
+      // Below the Training card: scrolled to.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Recent games'), findsOneWidget);
       expect(find.byType(GameListTile), findsNWidgets(3));
     });

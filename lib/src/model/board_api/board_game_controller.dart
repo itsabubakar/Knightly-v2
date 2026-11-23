@@ -93,6 +93,17 @@ sealed class const BoardGameState._() with _$BoardGameState {
 
     /// The move sent to lichess and not confirmed yet.
     String? pendingMove,
+
+    /// The arena tournament the game is part of.
+    TournamentId? tournamentId,
+
+    /// Whether each player went berserk (an arena: half the time, a point more for a win).
+    @Default(false) bool whiteBerserk,
+    @Default(false) bool blackBerserk,
+
+    /// Whether the game stream dropped and is being opened again (lichess then sends the whole game
+    /// again, which clears it).
+    @Default(false) bool reconnecting,
   }) = _BoardGameState;
 
   Position get position => positions.last;
@@ -137,8 +148,26 @@ sealed class const BoardGameState._() with _$BoardGameState {
     Takeback.never => false,
   };
 
+  /// Whether [side] went berserk.
+  bool isBerserk(Side side) => side == Side.white ? whiteBerserk : blackBerserk;
+
   /// A correspondence game: days per turn, or no time limit at all.
   bool get isCorrespondence => clock == null;
+
+  /// Whether the position on the board has been seen three times (the same pieces, side to move,
+  /// castling rights and en passant square): the user can then claim a draw.
+  bool get isThreefoldRepetition {
+    String key(Position position) => position.fen.split(' ').take(4).join(' ');
+    final current = key(position);
+    return positions.where((position) => key(position) == current).length >= 3;
+  }
+
+  /// The time left under which a clock is in "emergency" (red, the low time sound), as lichess
+  /// works it out: an eighth of the initial time, between 10 seconds and a minute.
+  Duration? get emergencyThreshold => switch (clock) {
+    (:final initial, increment: _) => Duration(seconds: (initial.inSeconds ~/ 8).clamp(10, 60)),
+    null => null,
+  };
 
   /// Whether the user's "Move confirmation" setting [pref] asks to confirm moves in this game.
   bool confirmsMoves(SubmitMove pref) {
@@ -269,6 +298,10 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
     }
     if (_latest?.isOver ?? false) return;
     _logger.info('Game stream closed, reconnecting', error, st);
+    if (_latest case final latest? when !latest.reconnecting) {
+      _latest = latest.copyWith(reconnecting: true);
+      state = AsyncData(_latest!);
+    }
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 2), _connect);
   }
@@ -335,8 +368,10 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
     final me = ref.read(authControllerProvider)?.user.id;
     final initialMs = p('clock', 'initial').asIntOrNull();
     final incrementMs = p('clock', 'increment').asIntOrNull();
+    final tournamentId = p('tournamentId').asStringOrNull();
     final base = BoardGameState(
       id: gameId,
+      tournamentId: tournamentId != null ? TournamentId(tournamentId) : null,
       rated: p('rated').asBoolOrNull() ?? false,
       speed: p('speed').asStringOrNull() ?? 'rapid',
       variant: variant,
@@ -398,6 +433,8 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
       whiteProposesTakeback: p('wtakeback').asBoolOrNull() ?? false,
       blackProposesTakeback: p('btakeback').asBoolOrNull() ?? false,
       pendingMove: null,
+      whiteBerserk: p('wberserk').asBoolOrNull() ?? current.whiteBerserk,
+      blackBerserk: p('bberserk').asBoolOrNull() ?? current.blackBerserk,
     );
   }
 
@@ -448,6 +485,12 @@ class BoardGameController(final GameId gameId) extends AsyncNotifier<BoardGameSt
   Future<void> declineTakeback() => _repository.takeback(gameId, accept: false);
 
   Future<void> claimVictory() => _repository.claimVictory(gameId);
+
+  /// Goes berserk (an arena game, before the first move).
+  Future<void> berserk() => _repository.berserk(gameId);
+
+  /// Claims a draw when the opponent has left the game.
+  Future<void> claimDraw() => _repository.claimDraw(gameId);
 
   Future<void> sendChat(String text) => _repository.chat(gameId, text);
 }

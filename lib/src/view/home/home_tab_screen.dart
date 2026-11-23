@@ -46,6 +46,7 @@ import 'package:lichess_mobile/src/view/play/play_menu.dart';
 import 'package:lichess_mobile/src/view/play/quick_game_matrix.dart';
 import 'package:lichess_mobile/src/view/progress/celebration_dialog.dart';
 import 'package:lichess_mobile/src/view/study/study_bookmarks_view.dart';
+import 'package:lichess_mobile/src/view/training/training_home_card.dart';
 import 'package:lichess_mobile/src/view/user/challenge_requests_screen.dart';
 import 'package:lichess_mobile/src/view/user/recent_games.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
@@ -258,6 +259,8 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                     padding: Styles.bodySectionPadding,
                     child: TodayCard(recentGames: recentGames),
                   ),
+                if (authUser != null && !widget.editModeEnabled)
+                  const Padding(padding: Styles.bodySectionPadding, child: TrainingHomeCard()),
                 if (hasServerContent)
                   _EditableWidget(
                     widget: HomeEditableWidget.perfCards,
@@ -335,6 +338,8 @@ class _HomeScreenState() extends ConsumerState<HomeTabScreen> {
                       ? _OngoingGamesCarousel(ongoingGames, maxGamesToShow: 20)
                       : _OfflineCorrespondenceCarousel(offlineCorresGames, maxGamesToShow: 20),
                 ),
+                if (authUser != null && !widget.editModeEnabled)
+                  const Padding(padding: Styles.bodySectionPadding, child: TrainingHomeCard()),
                 _EditableWidget(
                   widget: HomeEditableWidget.quickPairing,
                   shouldShow: hasServerContent,

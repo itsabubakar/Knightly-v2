@@ -600,8 +600,17 @@ Future<Set<Day>> _playedDays(Database db, UserId userId, DateTime startedAt) asy
     where: 'userId = ? AND finishedAt >= ?',
     whereArgs: [userId.value, startedAt.millisecondsSinceEpoch],
   );
+  // A day of training (openings, mistakes) keeps the streak too.
+  final training = await db.query(
+    'xp_event',
+    columns: ['createdAt'],
+    where: "userId = ? AND source = 'training' AND createdAt >= ?",
+    whereArgs: [userId.value, startedAt.millisecondsSinceEpoch],
+  );
   return {
     for (final row in rows) Day.of(DateTime.fromMillisecondsSinceEpoch(row['finishedAt']! as int)),
+    for (final row in training)
+      Day.of(DateTime.fromMillisecondsSinceEpoch(row['createdAt']! as int)),
   };
 }
 

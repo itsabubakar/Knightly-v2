@@ -130,7 +130,7 @@ moves are sent with `POST /api/board/game/<id>/move/<uci>`. The game screen is K
   opens on its own
 - [~] A live game that starts or is going on opens on its own (seek pairing, accepted challenge,
   tournament pairing, a game left open when the app closed)
-- [ ] Not done yet: berserk, the game's sounds on low
+- [ ] Not done yet (see Phase 7c): berserk, the game's sounds on low
   time; cancelling a correspondence seek (uses the websocket)
 
 ### Phase 7b: game screen and analysis (decided 2026-11-18; built, testing on the phone)
@@ -176,6 +176,79 @@ Fixes after the first phone test (2026-11-19):
   each kind of game (correspondence, unlimited, classical, rapid, blitz): the move shows on the
   board with cancel and confirm buttons; premoves aren't asked about
 
+### Phase 7c: what lichess's game screen had (decided 2026-11-23)
+
+What the old game screen did that Knightly's doesn't yet, and the Board API allows, in batches.
+
+Batch 1, things that behaved like bugs (built, testing on the phone):
+
+- [~] Auto-queen follows the "Promote to Queen automatically" setting (always, or on premoves)
+- [~] Moves vibrate as the board settings' haptic feedback asks (stronger on a check)
+- [~] The screen may sleep again once the game is over
+- [~] No premoves in correspondence games
+- [~] The user's own draw offer and takeback proposal can be cancelled
+- [~] Resigning and offering a draw are confirmed as "Confirm resignation and draw offers" says
+
+Batch 2, clock (built, testing on the phone):
+
+- [~] The low-time sound, once when the user's clock goes under the threshold on their turn (account
+  setting "Clock sound")
+- [~] Tenths of a second (account setting)
+- [~] The clock on the left or right (board setting)
+- [~] The low-time threshold from the time control, as lichess's: an eighth of the initial time,
+  between 10 seconds and a minute (was 20 seconds for every game)
+
+Batch 3, sounds and feel (built, testing on the phone):
+
+- [~] The confirmation sound when a move is confirmed
+- [~] Atomic: its capture sound (with batch 1's move feedback) and the explosion; the explosion
+  plays again when coming back to the live position from earlier moves (minor)
+- [~] No piece animation in bullet
+- [~] Sounds when going through the moves (previous, next, tapping a move, which also vibrates)
+
+Batch 4, settings in the game (built, testing on the phone):
+
+- [~] The game's settings icon opens a settings sheet: sound, move confirmation and auto-queen for
+  this game (shown when the account's settings use them), zen mode, chat, blindfold, and the board
+  settings
+- [~] Zen mode hides the names, the material, the chat and the moves (the clocks stay); it follows
+  the account's "Zen mode" (during games, or always), or the sheet for this game
+- [~] Blindfold mode hides the pieces
+
+Batch 5, end of game and draws (built, testing on the phone):
+
+- [~] Claim a draw on threefold repetition (a button under the board; sent as a draw "yes", which
+  lichess takes as the claim)
+- [~] Claim a draw ("Call it a draw"), not only victory, when the opponent left
+- [~] lichess's wording of the result, in the app's language, and who won
+- [~] Tapping the result under the board opens the result popup again
+- [~] New opponent (real-time games against a person): seeks again with the same time control,
+  variant and rated or casual
+- [~] The rating changes next to the ratings once lichess has them (rated games)
+
+Batch 6, getting around and sharing (built, testing on the phone):
+
+- [~] Next correspondence game where it's the user's turn: under the board once the user has moved,
+  and in the More menu
+- [~] Bookmark the game (More menu; lichess's bookmark, as the analysis screen does)
+- [~] Share the link; once over, the PGN (annotated or raw) and a GIF (More menu)
+- [~] The speed icon in the title; the last move time under the clocks in correspondence
+- [~] "Reconnecting…" in the title while the game stream is opened again
+- [~] Android full screen while playing a real-time game (board setting "Immersive mode")
+
+Batch 7, player bar and tournaments (built, testing on the phone):
+
+- [~] The head-to-head score next to each name (lichess's crosstable; games against people)
+- [~] BOT title in lichess's colour; the patron wings and the flair, from the players' profiles
+- [~] Berserk: the button in an arena that allows it, before the user's first move; the icon next
+  to a berserk player, and the sound (the button needs the arena's details: not tested with a real
+  one)
+- [~] Back to the tournament (More menu, result popup); pause it once the game is over (More menu)
+- [~] No chat in arena games, and no "New opponent" (the arena pairs)
+
+Not possible with the Board API: giving the opponent time, flagging (lichess does it), the
+spectators, the tournament rank, the forecasts badge.
+
 ## Phase 8: Daily goals
 
 - [ ] Set daily training activities (e.g. 1 Rapid game, 10 puzzles, 20 minutes of endgames),
@@ -201,6 +274,98 @@ Fixes after the first phone test (2026-11-19):
 - [ ] Bug: "unable to fetch tournament data" on Home, seen only when the debug app runs without
   `flutter run` attached (check in a release build)
 - [ ] Bug: the profile screen shows "Retry" for a moment before the real data
+
+## Training: openings and mistakes (decided 2026-11-23; built, testing on the phone)
+
+One review system with spaced repetition for two kinds of cards: a position of an opening
+repertoire (play your prepared move) and a mistake from one of the user's games (find the move
+missed).
+
+- [~] Cards with a review schedule: right, the next review waits a day, then 3, then longer (times
+  an ease that grows); wrong, it comes back in 10 minutes and starts over. At most 15 new cards a
+  day
+- [~] A session: the cards due, then the new ones; a wrong move shows the right one (an arrow),
+  which the user plays, and the card comes back at the end; Skip
+- [~] +1 XP per card right, once a day (Openings or Tactics); a day of training keeps the streak
+- [~] Home: a Training card with what's to review today, Review, Mistakes only, Repertoires
+- [~] Repertoires, as White or Black: built on a board; the user's move in each of their positions
+  (lichess's most played moves suggested, with their share), and the opponent's 3 most played
+  replies (at the levels and speeds of the opening explorer settings) added on their own down to
+  move 10; "Add top replies", a To do list of the positions waiting for the user's move, remove a
+  move (and what came after it), train one repertoire
+- [~] Mistake puzzles: the user's mistakes and blunders with one clear answer (the engine's best
+  move at least 0.2 winning chances better than the second best, checked for 1 second with 2
+  lines). From each game Knightly analyses (when its deep pass ends), and from the user's recent
+  games (rapid and slower, last 30 days), 3 at a time, a few seconds after Home opens (once per
+  session), with a quick analysis made then and saved for the analysis board
+- [ ] Not yet: import a PGN or a lichess study into a repertoire; repertoire coverage of the user's
+  games; puzzles from lichess's own analysis of a game
+
+## Ideas from ChessFlare (noted 2026-11-23)
+
+Features of ChessFlare: Chess Training 1.1.13 (Anakyos Apps), read from the translation keys in its
+app bundle. Ideas only: none of its code, text or images. Marked: **have** (Knightly has it),
+**partial**, **new**; and what it would need.
+
+Training plan and habits
+
+- [ ] Routine builder (**partial**: Phase 8 daily goals): a weekly plan, missions per weekday
+  (puzzles by theme, an opening trainer, a course, a bot game, a review of the latest loss,
+  Woodpecker cycles), reminders
+- [ ] Weekly quests and a weekly summary "story" to share (**new**)
+- [ ] A streak challenge with a bonus (**partial**: Knightly's streak already has freezes)
+- [ ] Home "guided" plan: analyse your latest loss, review a game, today's missions (**partial**:
+  Phase 9 review queue)
+
+Puzzles and tactics
+
+- [~] Puzzles made from the user's own mistakes: built (see Training below)
+- [ ] Woodpecker method: the same puzzle set in cycles, faster each time, with time and accuracy per
+  cycle (**new**; lichess puzzles by theme)
+- [ ] Puzzle sprint (**partial**: lichess Puzzle Storm and Streak)
+- [ ] The tactic shown on the board: fork, pin, skewer, battery, overloaded, hanging, trapped,
+  discovered, back rank (**new**)
+
+Openings
+
+- [~] Repertoire builder and trainer with spaced repetition: built (see Training below)
+- [ ] Repertoire coverage: which of the user's games left the repertoire, lines to add, "this move
+  isn't in your repertoire yet" (**new**)
+
+Courses
+
+- [ ] Courses: chapters, a learn mode with spaced review, a mastery chart, course search (**partial**:
+  lichess studies, Learn)
+- [ ] Endgame path: opposition, the rule of the square, breakthrough, triangulation, rook activity
+  (**partial**: lichess practice)
+
+After a game
+
+- [ ] Post-game report: a radar of opening, tactics, endgame and precision, compared with players
+  of the same rating, with exercises and a course for the weakest (**partial**: accuracy and game
+  insights; no comparison with others)
+- [ ] Key moments of a game (**partial**: local analysis finds the mistakes)
+
+Play
+
+- [ ] Bots with personalities and human-like play (Maia) (**partial**: lichess AI, Maia exists as
+  lichess bots)
+- [ ] Board scanner: a photo of a board to a position (**new**; needs on-device recognition)
+
+Progress and social
+
+- [ ] Skill graph across areas (**partial**: Phase 9 discipline levels)
+- [ ] Badges with rarity (**partial**: achievements)
+- [ ] Monthly and all-time leaderboards, friends, invitations by QR code (**new**; no server)
+- [ ] Rating chart per time control "since the last review" (**partial**)
+- [ ] Chess.com games imported too (**new**; chess.com's public API)
+
+AI coach
+
+- [ ] A coach to chat with, which sees the user's games, mistakes and stats, attaches positions and
+  photos, and recommends exercises (**new**; needs an AI service)
+
+Not for Knightly: crowns, energy and the paywall (ChessFlare's paid model), cosmetics to unlock.
 
 ## Reference
 

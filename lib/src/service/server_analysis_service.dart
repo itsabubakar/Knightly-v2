@@ -18,6 +18,7 @@ import 'package:lichess_mobile/src/model/game/game_repository.dart';
 import 'package:lichess_mobile/src/model/game/game_socket_events.dart';
 import 'package:lichess_mobile/src/model/local_analysis/local_analysis.dart';
 import 'package:lichess_mobile/src/model/local_analysis/local_analysis_runner.dart';
+import 'package:lichess_mobile/src/model/training/mistake_puzzles.dart';
 import 'package:lichess_mobile/src/network/http.dart';
 import 'package:lichess_mobile/src/network/socket.dart';
 import 'package:logging/logging.dart';
@@ -286,6 +287,8 @@ class ServerAnalysisService(final Ref ref) {
         if (deep == null) return;
         emit(deep);
         await saveLocalAnalysis(db, gameId, deep, deep: true);
+        // The user's mistakes in it become puzzles.
+        unawaited(ref.read(mistakePuzzleServiceProvider).scanGame(gameId, evals: deep));
       } catch (e, st) {
         _logger.warning('Could not analyse $gameId', e, st);
       } finally {

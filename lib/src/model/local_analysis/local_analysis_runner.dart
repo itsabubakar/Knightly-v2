@@ -118,7 +118,7 @@ class LocalAnalysisRunner({
             );
             if (_cancelled) return null;
             if (!interrupted) {
-              found = result;
+              found = result != null ? _positionEval(result) : null;
               break;
             }
           }
@@ -143,7 +143,7 @@ class LocalAnalysisRunner({
   ///
   /// It's over when the engine has searched for the time asked, or has stopped before (a position
   /// it has seen through, e.g. a mate).
-  Future<(PositionEval?, bool)> _evaluate(
+  Future<(LocalEval?, bool)> _evaluate(
     EvaluationContext context,
     EvalWork work,
     ForegroundEvaluations foreground, {
@@ -194,11 +194,69 @@ class LocalAnalysisRunner({
     }
     final eval = last;
     if (interrupted || eval == null) return (null, interrupted);
-    final pv = eval.pvs.firstOrNull;
-    return (
-      (cp: eval.mate == null ? eval.cp : null, mate: eval.mate, pv: pv?.moves.toList() ?? []),
-      false,
+    return (eval, false);
+  }
+
+  static PositionEval _positionEval(LocalEval eval) => (
+    cp: eval.mate == null ? eval.cp : null,
+    mate: eval.mate,
+    pv: eval.pvs.firstOrNull?.moves.toList() ?? [],
+  );
+
+  /// The engine's [multiPv] best lines in the position after the first [ply] moves, searched for
+  /// [searchTime] (in the background, as [run]); null when cancelled or the engine said nothing.
+  Future<IList<PvData>?> bestLines(
+    int ply, {
+    int multiPv = 2,
+    Duration searchTime = const Duration(seconds: 1),
+  }) async {
+    final context = EvaluationContext(
+      id: StringId('knightly-analysis-$gameId'),
+      variant: variant,
+      initialPosition: initial,
+      isBackground: true,
     );
+    final foreground = ref.read(foregroundEvaluationsProvider);
+    final keepAlive = ref.listen(positionEvaluatorProvider(context), (_, _) {});
+    try {
+      var position = initial;
+      final steps = <Step>[];
+      for (var i = 0; i < ply; i++) {
+        position = position.playUnchecked(moves[i].move);
+        steps.add(Step(position: position, sanMove: moves[i]));
+      }
+      final work = EvalWork(
+        id: context.id,
+        variant: variant,
+        threads: ref
+            .read(engineBudgetProvider)
+            .analysisThreads(ref.read(engineEvaluationPreferencesProvider).numEngineCores),
+        searchTime: searchTime,
+        multiPv: multiPv,
+        threatMode: false,
+        initialPosition: initial,
+        steps: steps.toIList(),
+      );
+      while (true) {
+        while (foreground.isBusy) {
+          await Future<void>.delayed(kAnalysisPauseCheck);
+          if (_cancelled) return null;
+        }
+        final (result, interrupted) = await _evaluate(
+          context,
+          work,
+          foreground,
+          timeout: searchTime + _kEngineStartTime,
+        );
+        if (_cancelled) return null;
+        if (!interrupted) {
+          ref.read(positionEvaluatorProvider(context).notifier).stop();
+          return result?.pvs;
+        }
+      }
+    } finally {
+      keepAlive.close();
+    }
   }
 }
 

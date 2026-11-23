@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 const kKnightlyDatabaseName = 'knightly.db';
 
 /// The current version of [kKnightlyDatabaseName]'s schema.
-const kKnightlyDatabaseVersion = 7;
+const kKnightlyDatabaseVersion = 8;
 
 /// A provider for Knightly's own [Database]: the data that only Knightly has (XP, achievements,
 /// streak, tags, study sessions, goals), backed up by `KnightlyBackup`.
@@ -167,6 +167,61 @@ final Map<int, void Function(Batch batch)> _migrations = {
         text TEXT NOT NULL,
         updatedAt INTEGER NOT NULL,
         PRIMARY KEY (gameId, moves)
+      )
+    ''');
+  },
+  // Training with spaced repetition: the cards (a position and the move to find, from an opening
+  // repertoire or a mistake in a game), the repertoires and their moves, and the games looked
+  // through for mistakes.
+  8: (batch) {
+    batch.execute('''
+      CREATE TABLE training_card (
+        id TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        sourceId TEXT NOT NULL,
+        fen TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        path TEXT NOT NULL,
+        orientation TEXT NOT NULL,
+        title TEXT NOT NULL,
+        createdAt INTEGER NOT NULL,
+        dueAt INTEGER NOT NULL,
+        intervalDays REAL NOT NULL,
+        ease REAL NOT NULL,
+        reps INTEGER NOT NULL,
+        lapses INTEGER NOT NULL,
+        firstReviewedAt INTEGER,
+        lastReviewedAt INTEGER,
+        PRIMARY KEY (id, userId)
+      )
+    ''');
+    batch.execute('CREATE INDEX training_card_due ON training_card (userId, dueAt)');
+    batch.execute('''
+      CREATE TABLE repertoire (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        side TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
+      )
+    ''');
+    batch.execute('''
+      CREATE TABLE repertoire_move (
+        repertoireId INTEGER NOT NULL,
+        fen TEXT NOT NULL,
+        uci TEXT NOT NULL,
+        san TEXT NOT NULL,
+        PRIMARY KEY (repertoireId, fen, uci)
+      )
+    ''');
+    batch.execute('''
+      CREATE TABLE mistake_scan (
+        gameId TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        scannedAt INTEGER NOT NULL,
+        found INTEGER NOT NULL,
+        PRIMARY KEY (gameId, userId)
       )
     ''');
   },

@@ -6,7 +6,6 @@ import 'package:lichess_mobile/src/model/board_api/board_events.dart';
 import 'package:lichess_mobile/src/model/board_api/board_game_controller.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
 import 'package:lichess_mobile/src/network/http.dart';
-import 'package:lichess_mobile/src/view/board_game/board_game_view.dart';
 
 import '../../network/fake_http_client_factory.dart';
 import '../../test_container.dart';
@@ -58,6 +57,19 @@ void main() {
       expect(game.clocksRunning, isTrue);
       expect(game.black.title, 'FM');
       expect(game.clock?.increment, const Duration(seconds: 5));
+    });
+
+    test("the emergency threshold is lichess's: an eighth of the time, 10 s to 1 min", () async {
+      final container = await makeBoardContainer();
+      // 10+5: 600 s / 8 is 75 s, capped at a minute.
+      final game = await load(container, gameFullJson(moves: 'e2e4 e7e5'));
+      expect(game.emergencyThreshold, const Duration(minutes: 1));
+    });
+
+    test('no emergency threshold in correspondence', () async {
+      final container = await makeBoardContainer();
+      final game = await load(container, gameFullJson(moves: 'e2e4', daysPerTurn: 3));
+      expect(game.emergencyThreshold, isNull);
     });
 
     test('the moves as PGN', () async {
@@ -127,7 +139,8 @@ void main() {
       final over = container.read(boardGameControllerProvider(_id)).value!;
       expect(over.isOver, isTrue);
       expect(over.clocksRunning, isFalse);
-      expect(boardGameResult(over), '0-1 · White resigned');
+      expect(over.status, 'resign');
+      expect(over.winner, Side.black);
     });
 
     test('the clock of the side to move counts down', () async {
