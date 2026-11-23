@@ -35,7 +35,11 @@ const kLichessClientId = 'knightly';
 /// installed on the same device can't receive the login callback. The debug build (app id
 /// `app.knightly.debug`) has its own too, so it can't receive the release app's (see the
 /// `oauthScheme` placeholder in `android/app/build.gradle.kts`).
-const kOAuthCustomUriSchemeName = kDebugMode ? 'app.knightly.debug' : 'app.knightly';
+const kOAuthCustomUriSchemeName = kDebugMode
+    ? 'app.knightly.debug'
+    : kProfileMode
+    ? 'app.knightly.profile'
+    : 'app.knightly';
 
 const kSRIStorageKey = 'socket_random_identifier';
 

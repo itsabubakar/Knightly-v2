@@ -5,6 +5,7 @@ import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/training/repertoire.dart';
 import 'package:lichess_mobile/src/model/training/training_cards.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
+import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
 import 'package:lichess_mobile/src/view/training/repertoire_screen.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
@@ -27,7 +28,9 @@ class const RepertoireListScreen({super.key}) extends ConsumerWidget {
     final db = await ref.read(knightlyDatabaseProvider.future);
     final id = await createRepertoire(db, userId, name: created.name, side: created.side);
     ref.invalidate(repertoiresProvider);
-    if (context.mounted) await Navigator.of(context).push(RepertoireScreen.buildRoute(id));
+    if (context.mounted) {
+      await Navigator.of(context).pushHidingTabBar(RepertoireScreen.buildRoute(id));
+    }
     ref.invalidate(repertoiresProvider);
   }
 
@@ -111,7 +114,7 @@ class const RepertoireListScreen({super.key}) extends ConsumerWidget {
                     ),
                     onTap: () async {
                       await Navigator.of(context)
-                          .push(RepertoireScreen.buildRoute(summary.repertoire.id));
+                          .pushHidingTabBar(RepertoireScreen.buildRoute(summary.repertoire.id));
                       ref.invalidate(repertoiresProvider);
                     },
                   ),

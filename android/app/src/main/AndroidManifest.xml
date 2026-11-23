@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Knightly: installs its own updates (a new APK from its GitHub releases, ota_update). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Explicitly define screen support for niche device compatibility -->
     <supports-screens
         android:smallScreens="true"
@@ -13,6 +15,17 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:fullBackupContent="@xml/backup_rules">
+
+        <!-- Knightly: hands the downloaded update to the installer (ota_update). -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ota_update_filepaths" />
+        </provider>
 
         <meta-data
           android:name="io.flutter.embedding.android.EnableImpeller"

@@ -110,6 +110,17 @@ the phone and the tests passing.
 - [x] Study time and sessions on the journey card; 1 XP per minute (under a minute doesn't count);
   "Deep Focus" achievement live
 
+## Study time on the board (decided 2026-11-24; built, testing on the phone)
+
+- [~] A clock under the board (bottom right, next to the player) on the analysis board and on
+  lichess studies: it runs from when the screen opens and stops when it closes, nothing to start
+  or stop; it doesn't count while the app is in the background. The time is saved as a study
+  session (Analysis, or Openings with the study) when the screen closes, a minute or more, +1 XP a
+  minute
+- [~] The floating study timer, its start buttons (analysis menu, study menu, bookmarked studies)
+  and the Study tracker's countdown and stopwatch are removed; the Study tracker keeps the
+  sessions, "Log a past session", and a timer left running from before
+
 ## Phase 7: Live play (Board API)
 
 Allowed: Rapid, Classical, Correspondence everywhere; Blitz only vs a friend or the AI. No Bullet.
@@ -277,6 +288,10 @@ spectators, the tournament rank, the forecasts badge.
 
 ## Training: openings and mistakes (decided 2026-11-23; built, testing on the phone)
 
+**2026-11-24: the openings trainer is set aside**: only the mistakes are shown (Home's card "Your
+mistakes", the "Your mistakes" screen). The repertoire screens, model and saved repertoires stay in
+the code and the database, not reachable, to bring back later.
+
 One review system with spaced repetition for two kinds of cards: a position of an opening
 repertoire (play your prepared move) and a mistake from one of the user's games (find the move
 missed).
@@ -285,9 +300,16 @@ missed).
   an ease that grows); wrong, it comes back in 10 minutes and starts over. At most 15 new cards a
   day
 - [~] A session: the cards due, then the new ones; a wrong move shows the right one (an arrow),
-  which the user plays, and the card comes back at the end; Skip
+  which the user plays, and the card comes back at the end; Skip. No moving on by itself: Next once
+  answered. Previous and next (held: repeated) go through the moves that led to the position
+- [~] A mistake shows the move played in the game and its evaluations (before, after: the loss),
+  then once found the best move's evaluation and what it gains (database version 9; the recent
+  games are looked through again to fill them in for the puzzles made before)
 - [~] +1 XP per card right, once a day (Openings or Tactics); a day of training keeps the streak
-- [~] Home: a Training card with what's to review today, Review, Mistakes only, Repertoires
+- [~] Openings and mistakes apart: Home's Training card has a line for each with its count and
+  Train (a single line when nothing is due); the Training screen behind it has an Openings section
+  (the repertoires, Train openings) and a Mistakes section (Train mistakes, the games the puzzles
+  come from, each with its own training, and "Look for mistakes now")
 - [~] Repertoires, as White or Black: built on a board; the user's move in each of their positions
   (lichess's most played moves suggested, with their share), and the opponent's 3 most played
   replies (at the levels and speeds of the opening explorer settings) added on their own down to

@@ -1,18 +1,19 @@
+import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/training/mistake_puzzles.dart';
-import 'package:lichess_mobile/src/model/training/repertoire.dart';
 import 'package:lichess_mobile/src/model/training/training_cards.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
+import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
-import 'package:lichess_mobile/src/view/training/repertoire_list_screen.dart';
 import 'package:lichess_mobile/src/view/training/training_session_screen.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Training, in two parts: the opening repertoires, and the puzzles made from the user's mistakes
-/// in their games.
+/// Training: the puzzles made from the user's mistakes in their games.
+///
+/// (The openings trainer is set aside for now: its repertoires and cards are kept, not shown.)
 class const TrainingScreen({super.key}) extends ConsumerStatefulWidget {
   static Route<void> buildRoute() => buildScreenRoute(screen: const TrainingScreen());
 
@@ -26,11 +27,12 @@ class _TrainingScreenState() extends ConsumerState<TrainingScreen> {
   void _refresh() {
     ref.invalidate(trainingSummaryProvider);
     ref.invalidate(mistakeGamesProvider);
-    ref.invalidate(repertoiresProvider);
   }
 
-  Future<void> _open(Route<void> route) async {
-    await Navigator.of(context).push(route);
+  /// Opens [route]; a board screen ([board]) hides the tab bar.
+  Future<void> _open(Route<void> route, {bool board = false}) async {
+    final navigator = Navigator.of(context);
+    await (board ? navigator.pushHidingTabBar(route) : navigator.push(route));
     _refresh();
   }
 
@@ -53,45 +55,12 @@ class _TrainingScreenState() extends ConsumerState<TrainingScreen> {
   Widget build(BuildContext context) {
     final summary = ref.watch(trainingSummaryProvider).value;
     final games = ref.watch(mistakeGamesProvider).value ?? const IListConst<MistakeGame>([]);
-    final repertoires = ref.watch(repertoiresProvider).value?.length ?? 0;
     final scheme = ColorScheme.of(context);
-    final openings = summary?.openings ?? 0;
     final mistakes = summary?.mistakes ?? 0;
     return PlatformScaffold(
-      appBar: const PlatformAppBar(title: Text('Training')),
+      appBar: const PlatformAppBar(title: Text('Your mistakes')),
       body: ListView(
         children: [
-          ListSection(
-            header: const Text('Openings'),
-            children: [
-              ListTile(
-                leading: const Icon(Icons.menu_book_outlined),
-                title: const Text('Opening repertoires'),
-                subtitle: Text(
-                  repertoires == 0
-                      ? 'Build your lines as White or Black, and drill them'
-                      : '$repertoires ${repertoires == 1 ? 'repertoire' : 'repertoires'}'
-                            '${openings > 0 ? ' · $openings to review' : ''}',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _open(RepertoireListScreen.buildRoute()),
-              ),
-              if (openings > 0)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 4.0, 16.0, 12.0),
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.school_outlined),
-                    label: Text('Train openings ($openings)'),
-                    onPressed: () => _open(
-                      TrainingSessionScreen.buildRoute(
-                        kind: TrainingKind.opening,
-                        title: 'Openings',
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
           ListSection(
             header: const Text('Mistakes from your games'),
             children: [
@@ -120,6 +89,7 @@ class _TrainingScreenState() extends ConsumerState<TrainingScreen> {
                             kind: TrainingKind.mistake,
                             title: 'Your mistakes',
                           ),
+                          board: true,
                         ),
                       ),
                       const SizedBox(height: 8.0),
@@ -131,7 +101,9 @@ class _TrainingScreenState() extends ConsumerState<TrainingScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.search),
-                      label: Text(_scanning ? 'Looking through your games…' : 'Look for mistakes now'),
+                      label: Text(
+                        _scanning ? 'Looking through your games…' : 'Look for mistakes now',
+                      ),
                       onPressed: _scanning ? null : _scan,
                     ),
                   ],
@@ -152,6 +124,7 @@ class _TrainingScreenState() extends ConsumerState<TrainingScreen> {
                       sourceId: game.gameId,
                       title: game.title,
                     ),
+                    board: true,
                   ),
                 ),
             ],

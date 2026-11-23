@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lichess_mobile/src/binding/binding.dart';
 import 'package:lichess_mobile/src/model/study/study_bookmarks.dart';
-import 'package:lichess_mobile/src/model/study_tracker/study_tracker.dart';
 import 'package:lichess_mobile/src/view/study/study_bookmarks_view.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -70,33 +69,5 @@ void main() {
     expect(find.text('Bookmarked studies'), findsOneWidget);
     expect(find.text('Endgame essentials'), findsOneWidget);
     expect(find.text('Caro-Kann repertoire'), findsNothing);
-  });
-
-  testWidgets('a bookmarked study starts a study timer, countdown or stopwatch', (tester) async {
-    final app = await makeTestProviderScopeApp(
-      tester,
-      home: const BookmarkedStudiesScreen(),
-      defaultPreferences: {kStudyBookmarksStorageKey: _bookmarks},
-    );
-    await tester.pumpWidget(app);
-
-    await tester.tap(find.byTooltip('Start a study timer').first);
-    await tester.pumpAndSettle();
-    expect(find.text('Study timer'), findsOneWidget);
-    expect(find.text('Countdown'), findsOneWidget);
-
-    await tester.tap(find.text('Stopwatch'));
-    await tester.pump();
-    await tester.tap(find.text('Start studying'));
-    await tester.pump();
-
-    final stored = LichessBinding.instance.sharedPreferences.getString(kStudyTimerStorageKey)!;
-    final timer = StudyTimer.fromJson(jsonDecode(stored) as Map<String, dynamic>);
-    expect(timer.mode, StudyMode.stopwatch);
-    expect(timer.study?.name, 'Endgame essentials');
-
-    // The study opens; leave it before the test ends.
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
   });
 }

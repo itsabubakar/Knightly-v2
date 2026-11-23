@@ -23,6 +23,7 @@ import 'package:lichess_mobile/src/service/account_service.dart';
 import 'package:lichess_mobile/src/service/announce_service.dart';
 import 'package:lichess_mobile/src/service/app_links_service.dart';
 import 'package:lichess_mobile/src/service/app_log_service.dart';
+import 'package:lichess_mobile/src/service/app_update_service.dart';
 import 'package:lichess_mobile/src/service/board_game_service.dart';
 import 'package:lichess_mobile/src/service/broadcast_service.dart';
 import 'package:lichess_mobile/src/service/challenge_service.dart';
@@ -37,7 +38,6 @@ import 'package:lichess_mobile/src/tab_scaffold.dart';
 import 'package:lichess_mobile/src/theme.dart';
 import 'package:lichess_mobile/src/ui_event_coordinator.dart';
 import 'package:lichess_mobile/src/utils/screen.dart';
-import 'package:lichess_mobile/src/view/study_tracker/study_timer_pill.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart' show usePinnedNavBar;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' show GlassNavigationShell;
 import 'package:material_ui/material_ui.dart';
@@ -102,6 +102,8 @@ class _AppState() extends ConsumerState<Application> {
     ref.read(quickActionServiceProvider).start();
     ref.read(announceServiceProvider).start();
     ref.read(appLinksServiceProvider).start();
+    // Knightly: a new release from GitHub, or a downloaded Shorebird patch waiting for a restart.
+    ref.read(appUpdateServiceProvider).start();
     // Knightly: a weekly copy of Knightly's own data, kept in the app's folder.
     unawaited(ref.read(knightlyBackupProvider).autoBackupIfDue());
     ref.read(sharedPgnServiceProvider).start();
@@ -233,10 +235,7 @@ class _AppState() extends ConsumerState<Application> {
             child: GlassNavigationShell(
               enabled: usePinnedNavBar(context),
               // Knightly: the running study timer floats above every screen.
-              child: IconTheme(
-                data: iconTheme,
-                child: Stack(children: [child!, const StudyTimerPill()]),
-              ),
+              child: IconTheme(data: iconTheme, child: child!),
             ),
           ),
         );

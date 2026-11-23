@@ -59,7 +59,8 @@ class const QuickGameMatrix({super.key}) extends ConsumerWidget {
               ? BoxDecoration(
                   image: DecorationImage(
                     colorFilter: ColorFilter.mode(logoColor, BlendMode.modulate),
-                    image: const AssetImage('assets/images/logo-transp.webp'),
+                    // Knightly's knight, behind the tiles.
+                    image: const AssetImage('assets/images/knightly-transp.png'),
                     fit: BoxFit.contain,
                   ),
                 )

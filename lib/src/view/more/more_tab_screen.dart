@@ -5,6 +5,7 @@ import 'package:lichess_mobile/src/model/analysis/analysis_controller.dart';
 import 'package:lichess_mobile/src/model/auth/auth_controller.dart';
 import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/id.dart';
+import 'package:lichess_mobile/src/model/common/preloaded_data.dart';
 import 'package:lichess_mobile/src/network/connectivity.dart';
 import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
@@ -168,7 +169,19 @@ class const _Body() extends ConsumerWidget {
           ),
           Padding(
             padding: Styles.bodySectionPadding,
-            child: KnightlyMessage(style: TextTheme.of(context).bodyMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                KnightlyMessage(style: TextTheme.of(context).bodyMedium),
+                const SizedBox(height: 4.0),
+                // Knightly's version (pubspec.yaml).
+                Text(
+                  'Version ${ref.read(preloadedDataProvider).requireValue.packageInfo.version}',
+                  style: TextTheme.of(context).bodySmall
+                      ?.copyWith(color: ColorScheme.of(context).onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ],
       ),

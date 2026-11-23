@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lichess_mobile/src/model/training/mistake_puzzles.dart';
 import 'package:lichess_mobile/src/model/training/training_cards.dart';
-import 'package:lichess_mobile/src/styles/styles.dart';
-import 'package:lichess_mobile/src/view/training/repertoire_list_screen.dart';
+import 'package:lichess_mobile/src/tab_navigation.dart';
+import 'package:lichess_mobile/src/view/training/training_screen.dart';
 import 'package:lichess_mobile/src/view/training/training_session_screen.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Home's training card: the opening moves and the mistakes to review today, the way in to the
-/// review and to the repertoires.
+/// Home's training card: the puzzles from the user's mistakes to review today, their training, and
+/// the way in to the mistakes screen. (The openings trainer is set aside for now.)
 ///
 /// It also starts the quiet look through the user's recent games for mistakes, once per session.
 class const TrainingHomeCard({super.key}) extends ConsumerStatefulWidget {
@@ -37,8 +37,10 @@ class _TrainingHomeCardState() extends ConsumerState<TrainingHomeCard> {
     });
   }
 
-  Future<void> _open(Route<void> route) async {
-    await Navigator.of(context).push(route);
+  /// Opens [route]; a board screen ([board]) hides the tab bar.
+  Future<void> _open(Route<void> route, {bool board = false}) async {
+    final navigator = Navigator.of(context);
+    await (board ? navigator.pushHidingTabBar(route) : navigator.push(route));
     ref.invalidate(trainingSummaryProvider);
   }
 
@@ -46,80 +48,31 @@ class _TrainingHomeCardState() extends ConsumerState<TrainingHomeCard> {
   Widget build(BuildContext context) {
     final summary = ref.watch(trainingSummaryProvider).value;
     if (summary == null) return const SizedBox.shrink();
-    final scheme = ColorScheme.of(context);
-    final toReview = summary.openings + summary.mistakes;
-    final empty = summary.openingCards == 0 && summary.mistakeCards == 0;
-    // Nothing to review: a single line, the way in to the repertoires.
-    if (toReview == 0) {
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.school_outlined),
-          title: const Text('Training'),
-          subtitle: Text(
-            empty ? 'Build an opening repertoire to drill' : 'Nothing to review right now',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => _open(RepertoireListScreen.buildRoute()),
-        ),
-      );
-    }
+    final due = summary.mistakes;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(child: Text('Training', style: Styles.sectionTitle)),
-                if (toReview > 0)
-                  Text(
-                    '$toReview to review',
-                    style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w800),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              empty
-                  ? 'Build an opening repertoire to drill your lines. Your mistakes in your '
-                        'analysed games become puzzles here too.'
-                  : [
-                      if (summary.openingCards > 0) '${summary.openings} opening moves',
-                      if (summary.mistakeCards > 0) '${summary.mistakes} of your mistakes',
-                    ].join(' · '),
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12.0),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: [
-                if (toReview > 0)
-                  FilledButton.icon(
-                    icon: const Icon(Icons.school_outlined),
-                    label: const Text('Review'),
-                    onPressed: () => _open(TrainingSessionScreen.buildRoute()),
-                  ),
-                if (summary.mistakes > 0 && summary.openings > 0)
-                  OutlinedButton(
-                    onPressed: () => _open(
-                      TrainingSessionScreen.buildRoute(
-                        kind: TrainingKind.mistake,
-                        title: 'Your mistakes',
-                      ),
-                    ),
-                    child: const Text('Mistakes only'),
-                  ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Repertoires'),
-                  onPressed: () => _open(RepertoireListScreen.buildRoute()),
-                ),
-              ],
-            ),
-          ],
+      child: ListTile(
+        leading: const Icon(Icons.extension_outlined),
+        title: const Text('Your mistakes'),
+        subtitle: Text(
+          due > 0
+              ? '$due to review'
+              : summary.mistakeCards == 0
+              ? 'Your mistakes in your games become puzzles'
+              : 'Nothing to review right now',
         ),
+        trailing: due > 0
+            ? FilledButton(
+                onPressed: () => _open(
+                  TrainingSessionScreen.buildRoute(
+                    kind: TrainingKind.mistake,
+                    title: 'Your mistakes',
+                  ),
+                  board: true,
+                ),
+                child: const Text('Train'),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: () => _open(TrainingScreen.buildRoute()),
       ),
     );
   }

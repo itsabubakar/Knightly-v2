@@ -9,7 +9,6 @@ import 'package:lichess_mobile/src/styles/styles.dart';
 import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
 import 'package:lichess_mobile/src/view/study/study_screen.dart';
-import 'package:lichess_mobile/src/view/study_tracker/study_timer_setup.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
 import 'package:lichess_mobile/src/widgets/platform_alert_dialog.dart';
@@ -136,9 +135,16 @@ class _StudyTrackerScreenState() extends ConsumerState<StudyTrackerScreen> {
               ),
             )
           else
-            StudyTimerSetup(
-              onStart: (mode, category, planned) =>
-                  ref.read(studyTimerProvider.notifier).start(mode, category, planned: planned),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Your time on the analysis board and in studies counts on its own: the clock '
+                  'under the board runs while the screen is open, and the session is saved when '
+                  'you leave it (+1 XP a minute).',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
             ),
           const SizedBox(height: 16.0),
           OutlinedButton.icon(

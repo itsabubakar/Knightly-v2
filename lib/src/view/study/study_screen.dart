@@ -8,6 +8,7 @@ import 'package:lichess_mobile/src/model/common/chess.dart';
 import 'package:lichess_mobile/src/model/common/eval.dart';
 import 'package:lichess_mobile/src/model/engine/evaluation_preferences.dart';
 import 'package:lichess_mobile/src/model/engine/position_evaluator.dart';
+import 'package:lichess_mobile/src/model/progression/xp_rules.dart';
 import 'package:lichess_mobile/src/model/settings/board_preferences.dart';
 import 'package:lichess_mobile/src/model/study/study_bookmarks.dart';
 import 'package:lichess_mobile/src/model/study/study_controller.dart';
@@ -31,7 +32,7 @@ import 'package:lichess_mobile/src/view/study/study_bottom_bar.dart';
 import 'package:lichess_mobile/src/view/study/study_chapters_sheet.dart';
 import 'package:lichess_mobile/src/view/study/study_gamebook.dart';
 import 'package:lichess_mobile/src/view/study/study_tree_view.dart';
-import 'package:lichess_mobile/src/view/study_tracker/study_timer_setup.dart';
+import 'package:lichess_mobile/src/view/study_tracker/session_clock.dart';
 import 'package:lichess_mobile/src/widgets/buttons.dart';
 import 'package:lichess_mobile/src/widgets/feedback.dart';
 import 'package:lichess_mobile/src/widgets/misc.dart';
@@ -128,15 +129,6 @@ class _StudyScreenState() extends ConsumerState<StudyScreen> {
                   onPressed: () {
                     ref.read(studyBookmarksProvider.notifier).toggle(studyState.study);
                   },
-                ),
-                // Knightly: a study timer (countdown or stopwatch) for this study.
-                ContextMenuAction(
-                  icon: Icons.timer_outlined,
-                  label: 'Start study timer',
-                  onPressed: () => showStartStudyTimerSheet(
-                    context,
-                    study: (id: studyState.study.id, name: studyState.study.name),
-                  ),
                 ),
                 ContextMenuAction(
                   icon: Theme.of(context).platform == TargetPlatform.iOS
@@ -422,7 +414,14 @@ class const _Body({
           StudyAnalysisBoard(options: options, boardSize: boardSize, boardRadius: borderRadius),
       smallBoard: smallBoard,
       boardHeader: pov == Side.white ? playerWidgets.black : playerWidgets.white,
-      boardFooter: pov == Side.white ? playerWidgets.white : playerWidgets.black,
+      // Knightly: the time on the study, counted while it's open.
+      boardFooter: BoardFooterWithClock(
+        footer: pov == Side.white ? playerWidgets.white : playerWidgets.black,
+        clock: SessionClock(
+          category: Discipline.openings,
+          study: (id: studyState.study.id, name: studyState.study.name),
+        ),
+      ),
       engineGaugeBuilder:
           isComputerAnalysisAllowed && showEvaluationGauge && engineGaugeParams != null
           ? (context) {

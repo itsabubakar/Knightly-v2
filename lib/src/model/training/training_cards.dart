@@ -58,7 +58,32 @@ typedef TrainingCard = ({
 
   /// When the card was first reviewed; null for a new card.
   DateTime? firstReviewedAt,
+
+  /// A mistake's move played in the game (UCI), and the evaluations (White's) before it, after it,
+  /// and after the best move; null for an opening card, or a mistake found before they were kept.
+  String? played,
+  CardEval? beforeEval,
+  CardEval? playedEval,
+  CardEval? bestEval,
 });
+
+/// An evaluation of a position, from White's side: centipawns, or a mate in so many moves.
+typedef CardEval = ({int? cp, int? mate});
+
+/// [eval] as stored: `cp:35` or `mate:-2`.
+String? encodeCardEval(CardEval? eval) => switch (eval) {
+  (cp: _, mate: final mate?) => 'mate:$mate',
+  (cp: final cp?, mate: null) => 'cp:$cp',
+  _ => null,
+};
+
+CardEval? decodeCardEval(Object? text) {
+  if (text is! String) return null;
+  final parts = text.split(':');
+  final value = parts.length == 2 ? int.tryParse(parts[1]) : null;
+  if (value == null) return null;
+  return parts[0] == 'mate' ? (cp: null, mate: value) : (cp: value, mate: null);
+}
 
 /// The review schedule of a card.
 typedef ReviewSchedule = ({double intervalDays, double ease, int reps, int lapses, DateTime dueAt});
@@ -119,6 +144,10 @@ TrainingCard _cardFromRow(Map<String, Object?> row) {
     firstReviewedAt: row['firstReviewedAt'] != null
         ? DateTime.fromMillisecondsSinceEpoch(row['firstReviewedAt']! as int)
         : null,
+    played: row['played'] as String?,
+    beforeEval: decodeCardEval(row['beforeEval']),
+    playedEval: decodeCardEval(row['playedEval']),
+    bestEval: decodeCardEval(row['bestEval']),
   );
 }
 
@@ -135,6 +164,10 @@ Future<void> saveTrainingCard(
   required Iterable<String> path,
   required Side orientation,
   required String title,
+  String? played,
+  CardEval? beforeEval,
+  CardEval? playedEval,
+  CardEval? bestEval,
 }) async {
   final existing = await db.query(
     'training_card',
@@ -151,6 +184,10 @@ Future<void> saveTrainingCard(
     'path': path.join(' '),
     'orientation': orientation.name,
     'title': title,
+    'played': played,
+    'beforeEval': encodeCardEval(beforeEval),
+    'playedEval': encodeCardEval(playedEval),
+    'bestEval': encodeCardEval(bestEval),
   };
   if (existing.isEmpty || existing.first['answer'] != answer) {
     await db.insert('training_card', {

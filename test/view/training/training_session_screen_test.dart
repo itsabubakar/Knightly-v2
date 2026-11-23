@@ -21,6 +21,71 @@ Future<void> _settleDb(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("a mistake: the game's move and its loss, the best move and its gain, the moves "
+      'before it', (tester) async {
+    // 1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6?? 4. Qxf7#: Black's mistake was Nf6, g6 was best.
+    final app = await makeTestProviderScopeApp(
+      tester,
+      authUser: fakeAuthUser,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(TrainingSessionScreen.buildRoute()),
+          child: const Text('Open'),
+        ),
+      ),
+    );
+    await tester.pumpWidget(app);
+    final container = ProviderScope.containerOf(tester.element(find.text('Open')));
+    const path = ['e2e4', 'e7e5', 'd1h5', 'b8c6', 'f1c4'];
+    await tester.runAsync(() async {
+      final db = await container.read(knightlyDatabaseProvider.future);
+      Position position = Chess.initial;
+      for (final uci in path) {
+        position = position.play(Move.parse(uci)!);
+      }
+      await saveTrainingCard(
+        db,
+        userId: fakeAuthUser.user.id,
+        id: 'mistake:abcdefgh:5',
+        kind: TrainingKind.mistake,
+        sourceId: 'abcdefgh',
+        fen: position.fen,
+        answer: 'g7g6',
+        path: path,
+        orientation: Side.black,
+        title: 'vs opponent, move 3',
+        played: 'g8f6',
+        beforeEval: (cp: 30, mate: null),
+        playedEval: (cp: null, mate: 1),
+        bestEval: (cp: 40, mate: null),
+      );
+    });
+    await tester.tap(find.text('Open'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await _settleDb(tester);
+
+    // From Black's side: -0.3 before, mated after Nf6.
+    expect(find.textContaining('In your game: Nf6', findRichText: true), findsOneWidget);
+    expect(find.textContaining('-0.3 → #-1', findRichText: true), findsOneWidget);
+    expect(find.textContaining('Best:', findRichText: true), findsNothing);
+
+    // The moves before it, and back.
+    await tester.tap(find.bySemanticsLabel('Previous move').first);
+    await tester.pump();
+    expect(find.text('Going through the game: come back to the end to play.'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Next move').first);
+    await tester.pump();
+    expect(find.text('Find the move you missed in your game.'), findsOneWidget);
+
+    await playMove(tester, 'g7', 'g6', orientation: Side.black);
+    await tester.pump();
+    await _settleDb(tester);
+    expect(find.text('Correct!'), findsOneWidget);
+    expect(find.textContaining('Best: g6', findRichText: true), findsOneWidget);
+    expect(find.textContaining('-0.4', findRichText: true), findsOneWidget);
+  });
+
   /// Opens a session with one card: 1. e4, the user's move as White.
   Future<ProviderContainer> openSession(WidgetTester tester) async {
     final app = await makeTestProviderScopeApp(
@@ -66,7 +131,11 @@ void main() {
     await tester.pump();
     expect(find.text('Correct!'), findsOneWidget);
     await _settleDb(tester);
-    await tester.pump(const Duration(seconds: 1));
+    // It waits for Next.
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Correct!'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('training-next')));
+    await tester.pump();
     expect(find.text('Session done'), findsOneWidget);
     expect(find.text('1 of 1 right the first time.'), findsOneWidget);
 
@@ -90,6 +159,9 @@ void main() {
     await playMove(tester, 'e2', 'e4');
     await tester.pump();
     await _settleDb(tester);
+    expect(find.text("That's the move. It comes back later."), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('training-next')));
+    await tester.pump();
     expect(find.text('My White'), findsOneWidget);
     expect(find.text('Your move: what does your repertoire play?'), findsOneWidget);
 
@@ -97,7 +169,8 @@ void main() {
     await playMove(tester, 'e2', 'e4');
     await tester.pump();
     await _settleDb(tester);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byKey(const ValueKey('training-next')));
+    await tester.pump();
     expect(find.text('0 of 1 right the first time.'), findsOneWidget);
   });
 }

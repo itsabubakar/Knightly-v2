@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 const kKnightlyDatabaseName = 'knightly.db';
 
 /// The current version of [kKnightlyDatabaseName]'s schema.
-const kKnightlyDatabaseVersion = 8;
+const kKnightlyDatabaseVersion = 9;
 
 /// A provider for Knightly's own [Database]: the data that only Knightly has (XP, achievements,
 /// streak, tags, study sessions, goals), backed up by `KnightlyBackup`.
@@ -224,5 +224,15 @@ final Map<int, void Function(Batch batch)> _migrations = {
         PRIMARY KEY (gameId, userId)
       )
     ''');
+  },
+  // A mistake card's move played in the game, and the evaluations before it, after it and after
+  // the best move. The games are looked through again to fill them in (the cards keep their
+  // schedule).
+  9: (batch) {
+    batch.execute('ALTER TABLE training_card ADD COLUMN played TEXT');
+    batch.execute('ALTER TABLE training_card ADD COLUMN beforeEval TEXT');
+    batch.execute('ALTER TABLE training_card ADD COLUMN playedEval TEXT');
+    batch.execute('ALTER TABLE training_card ADD COLUMN bestEval TEXT');
+    batch.execute('DELETE FROM mistake_scan');
   },
 };

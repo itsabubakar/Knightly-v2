@@ -2,7 +2,7 @@ name: lichess_mobile
 description: Lichess mobile app V2
 publish_to: "none"
 
-version: 0.31.8+003108 # See README.md for details about versioning
+version: 1.0.1+010001 # Knightly's version: see README.md for how to bump it
 
 environment:
   sdk: ^3.14.0
@@ -66,6 +66,7 @@ dependencies:
   material_ui: ^1.10.0
   meta: ^1.19.0
   multistockfish: ^0.6.1
+  ota_update: ^7.1.0
   package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
@@ -76,6 +77,7 @@ dependencies:
   result_extensions: ^0.2.0
   share_plus: ^13.3.1
   shared_preferences: ^2.5.6
+  shorebird_code_push: ^2.0.7
   signal_strength_indicator: ^0.5.0
   sound_effect: ^0.2.0
   sqflite: ^2.4.5
@@ -124,6 +126,7 @@ flutter:
     - assets/positions.json
     - assets/endgames.json
     - assets/practice.json
+    - shorebird.yaml
 
   fonts:
     - family: LichessIcons

@@ -31,6 +31,10 @@ enum BottomTab() {
     }
   }
 
+  /// The tab's icon.
+  Widget iconWidget({required bool selected, Color? color}) =>
+      Icon(icon, fill: selected ? 1 : 0, color: color);
+
   IconData get icon {
     switch (this) {
       case BottomTab.home:

@@ -182,7 +182,22 @@ class MistakePuzzleService(final Ref ref) {
         if (lines == null) continue;
         final answer = clearBestMove(lines, mySide);
         if (answer == null) continue;
-        await _saveCard(db, userId, game, moves, initial, candidate.ply, answer, mySide);
+        final best = lines.first;
+        await _saveCard(
+          db,
+          userId,
+          game,
+          moves,
+          initial,
+          candidate.ply,
+          answer,
+          mySide,
+          evals: (
+            before: _cardEval(gameEvals[candidate.ply]),
+            played: _cardEval(gameEvals[candidate.ply + 1]),
+            best: (cp: best.mate == null ? best.cp : null, mate: best.mate),
+          ),
+        );
         found++;
       }
       await _markScanned(db, userId, gameId, found);
@@ -202,8 +217,9 @@ class MistakePuzzleService(final Ref ref) {
     Position initial,
     int ply,
     String answer,
-    Side mySide,
-  ) async {
+    Side mySide, {
+    required ({CardEval? before, CardEval? played, CardEval? best}) evals,
+  }) async {
     var position = initial;
     for (var i = 0; i < ply; i++) {
       position = position.playUnchecked(moves[i].move);
@@ -221,8 +237,15 @@ class MistakePuzzleService(final Ref ref) {
       path: [for (final move in moves.take(ply)) move.move.uci],
       orientation: mySide,
       title: 'vs $name, move ${ply ~/ 2 + 1}',
+      played: moves[ply].move.uci,
+      beforeEval: evals.before,
+      playedEval: evals.played,
+      bestEval: evals.best,
     );
   }
+
+  static CardEval? _cardEval(PositionEval? eval) =>
+      eval == null ? null : (cp: eval.mate == null ? eval.cp : null, mate: eval.mate);
 
   Future<void> _markScanned(Database db, UserId userId, GameId gameId, int found) =>
       db.insert('mistake_scan', {

@@ -35,7 +35,7 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
         destinations: [
           for (final tab in BottomTab.values)
             NavigationDestination(
-              icon: Icon(tab.icon, fill: tab == currentTab ? 1 : 0),
+              icon: tab.iconWidget(selected: tab == currentTab),
               label: tab.label(context.l10n),
             ),
         ],
@@ -99,8 +99,8 @@ class const MainTabScaffold({super.key}) extends ConsumerWidget {
         tabs: [
           for (final tab in BottomTab.values)
             GlassTab(
-              icon: Icon(tab.icon),
-              activeIcon: Icon(tab.icon, fill: 1),
+              icon: tab.iconWidget(selected: false),
+              activeIcon: tab.iconWidget(selected: true),
               label: tab.label(context.l10n),
             ),
         ],
@@ -610,9 +610,8 @@ class const _BlurredTabBar({
                           mainAxisAlignment: MainAxisAlignment.center,
                           spacing: 2.0,
                           children: [
-                            Icon(
-                              tab.icon,
-                              fill: tab == currentTab ? 1 : 0,
+                            tab.iconWidget(
+                              selected: tab == currentTab,
                               color: tab == currentTab ? activeColor : inactiveColor,
                             ),
                             Text(

@@ -62,6 +62,18 @@ flutter test
 Do not edit the files in `translation/` folder (except `translation/source/mobile.xml`), nor the `app_en.arb` file: these files are generated.
 For more information, see [Internationalisation](./docs/internationalisation.md).
 
+## Knightly's version
+
+Knightly has its own version, from 1.0.0 (2026-11-23), shown on the Profile tab under the Knightly
+line. Bump it in `pubspec.yaml` with each build installed, by how big the change is:
+
+- **Patch** (1.0.0 → 1.0.1): fixes and small changes.
+- **Minor** (1.0.1 → 1.1.0): a new feature or a batch of them.
+- **Major** (1.1.0 → 2.0.0): a big change of the app.
+
+The number after `+` is the Android version code: `MMmmpp`, e.g. 1.2.3 is `+010203`. It must only
+go up, or Android refuses to install over the app.
+
 ## Releasing
 
 Only for members of lichess team.

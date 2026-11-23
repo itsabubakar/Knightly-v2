@@ -7,10 +7,8 @@ import 'package:lichess_mobile/src/tab_navigation.dart';
 import 'package:lichess_mobile/src/utils/l10n_context.dart';
 import 'package:lichess_mobile/src/utils/navigation.dart';
 import 'package:lichess_mobile/src/view/study/study_screen.dart';
-import 'package:lichess_mobile/src/view/study_tracker/study_timer_setup.dart';
 import 'package:lichess_mobile/src/widgets/list.dart';
 import 'package:lichess_mobile/src/widgets/platform.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The latest bookmarked studies, with a link to all of them. Shows nothing without bookmarks.
@@ -54,15 +52,6 @@ class const BookmarkedStudyTile({
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            tooltip: 'Start a study timer',
-            icon: const Icon(Symbols.timer),
-            onPressed: () => showStartStudyTimerSheet(
-              context,
-              study: (id: bookmark.id, name: bookmark.name),
-              onStarted: openStudy,
-            ),
-          ),
           trailing ??
               (Theme.of(context).platform == TargetPlatform.iOS
                   ? const CupertinoListTileChevron()

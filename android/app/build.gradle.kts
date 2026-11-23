@@ -91,3 +91,14 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.core:core-splashscreen:1.0.1")
 }
+
+// Knightly: a profile build (flutter run --profile, to measure) is its own app, `app.knightly.profile`,
+// with its own sign in redirect: signed with the debug key, it must never replace the release (Android
+// would uninstall the release, and its data, to install it). Set on the app's variant: Flutter copies
+// the profile build type to the plugins, which can't have an application id suffix.
+androidComponents {
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.applicationId.set("app.knightly.profile")
+        variant.manifestPlaceholders.put("oauthScheme", "app.knightly.profile")
+    }
+}
