@@ -2,7 +2,7 @@ name: lichess_mobile
 description: Lichess mobile app V2
 publish_to: "none"
 
-version: 1.0.1+010001 # Knightly's version: see README.md for how to bump it
+version: 1.1.0+010100 # Knightly's version: see README.md for how to bump it
 
 environment:
   sdk: ^3.14.0

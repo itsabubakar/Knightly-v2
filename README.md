@@ -74,6 +74,14 @@ line. Bump it in `pubspec.yaml` with each build installed, by how big the change
 The number after `+` is the Android version code: `MMmmpp`, e.g. 1.2.3 is `+010203`. It must only
 go up, or Android refuses to install over the app.
 
+Releasing, with `release.ps1` (needs `shorebird` and `gh`, signed in):
+
+- `.elease.ps1 patch`: a Shorebird patch (Dart code only) for the version in `pubspec.yaml`, on
+  the stable track. Phones get it in the background, on their next restart.
+- `.elease.ps1 major -Notes "What's new"`: bump the version first. A Shorebird release (APK,
+  arm64), then a GitHub release in `itsabubakar/knightly-releases` tagged `v<version>` with the
+  APK: installed apps offer to update to it. `-Device <adb id>` also installs it with adb.
+
 ## Releasing
 
 Only for members of lichess team.
