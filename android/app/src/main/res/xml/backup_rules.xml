@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- What Android's own backup saves to the user's Google account (Android 11 and lower; Android 12
+     and higher read data_extraction_rules.xml). Knightly: its daily backups too (files/knightly_backups,
+     see KnightlyBackup), which it offers to restore after a reinstall. -->
 <full-backup-content>
   <include domain="sharedpref" path="."/>
   <exclude domain="sharedpref" path="FlutterSecureStorage"/>
+  <include domain="file" path="knightly_backups/"/>
 </full-backup-content>

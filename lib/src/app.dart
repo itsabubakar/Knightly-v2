@@ -24,6 +24,7 @@ import 'package:lichess_mobile/src/service/announce_service.dart';
 import 'package:lichess_mobile/src/service/app_links_service.dart';
 import 'package:lichess_mobile/src/service/app_log_service.dart';
 import 'package:lichess_mobile/src/service/app_update_service.dart';
+import 'package:lichess_mobile/src/service/backup_restore_service.dart';
 import 'package:lichess_mobile/src/service/board_game_service.dart';
 import 'package:lichess_mobile/src/service/broadcast_service.dart';
 import 'package:lichess_mobile/src/service/challenge_service.dart';
@@ -106,6 +107,8 @@ class _AppState() extends ConsumerState<Application> {
     ref.read(appUpdateServiceProvider).start();
     // Knightly: a weekly copy of Knightly's own data, kept in the app's folder.
     unawaited(ref.read(knightlyBackupProvider).autoBackupIfDue());
+    // Knightly: after a reinstall, the daily backup Android brought back, offered to restore.
+    ref.read(backupRestoreServiceProvider).start();
     ref.read(sharedPgnServiceProvider).start();
     ref.read(broadcastServiceProvider).start();
     ref.read(recapServiceProvider).start();

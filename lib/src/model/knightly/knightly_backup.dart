@@ -25,11 +25,12 @@ const kKnightlyBackupFormat = 'knightly-backup';
 /// The version of the backup file structure.
 const kKnightlyBackupVersion = 1;
 
-/// How often an automatic backup is made.
-const kAutoBackupInterval = Duration(days: 7);
+/// How often an automatic backup is made: daily, so that Android's own backup to the user's Google
+/// account (which takes these files, see `res/xml/backup_rules.xml`) has the day's data.
+const kAutoBackupInterval = Duration(days: 1);
 
-/// How many automatic backups are kept.
-const kAutoBackupsKept = 4;
+/// How many automatic backups are kept: a week of them.
+const kAutoBackupsKept = 7;
 
 /// Thrown when a file is not a Knightly backup this version can restore.
 class const InvalidBackupException(final String message) implements Exception {
@@ -140,8 +141,12 @@ class KnightlyBackup(final Ref _ref) {
 
   /// Makes an automatic backup if the latest one is older than [kAutoBackupInterval], keeping the
   /// [kAutoBackupsKept] newest ones. Never throws.
+  ///
+  /// Nothing is backed up while Knightly has no data of its own (a new install, a reinstall): an
+  /// empty backup would push out the ones Android restored.
   Future<void> autoBackupIfDue() async {
     try {
+      if (!await hasData()) return;
       final backups = await listAutoBackups();
       final now = DateTime.now();
       if (backups.isNotEmpty && now.difference(backups.first.date) < kAutoBackupInterval) {
@@ -156,6 +161,28 @@ class KnightlyBackup(final Ref _ref) {
       _logger.info('Automatic backup made.');
     } catch (e, st) {
       _logger.warning('Could not make an automatic backup:', e, st);
+    }
+  }
+
+  /// Whether Knightly has data of its own: XP, study sessions, training cards, reviewed games.
+  Future<bool> hasData() async {
+    final db = await _ref.read(knightlyDatabaseProvider.future);
+    for (final table in const ['xp_event', 'study_session', 'training_card', 'game_review']) {
+      final rows = await db.rawQuery('SELECT 1 FROM $table LIMIT 1');
+      if (rows.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  /// The automatic backup to offer after a reinstall: the newest one, when Knightly has no data of
+  /// its own yet (Android put the backups back with the app, from the user's Google account).
+  Future<AutoBackup?> backupToRestore() async {
+    try {
+      if (await hasData()) return null;
+      return (await listAutoBackups()).firstOrNull;
+    } catch (e, st) {
+      _logger.warning('Could not look for a backup to restore:', e, st);
+      return null;
     }
   }
 

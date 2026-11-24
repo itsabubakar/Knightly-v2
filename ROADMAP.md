@@ -110,6 +110,17 @@ the phone and the tests passing.
 - [x] Study time and sessions on the journey card; 1 XP per minute (under a minute doesn't count);
   "Deep Focus" achievement live
 
+## Backups to the user's Google account (decided 2026-11-24; built, needs a release)
+
+- [~] Knightly's automatic backup daily (was weekly), the last 7 kept; none while Knightly has no
+  data of its own (a new install), so an empty one never pushes out the restored ones
+- [~] Android's own backup to the user's Google account takes them (`backup_rules.xml`, and
+  `data_extraction_rules.xml` for Android 12 and higher), with the preferences but not the sign in:
+  about once a day, when the phone is idle, charging and on Wi-Fi ("Backup by Google One" on)
+- [~] After a reinstall, Knightly offers to restore the newest backup Android brought back
+- [~] Profile builds (`flutter run --profile`) are their own app, `app.knightly.profile`: one
+  replaced the release, and its data, on 2026-11-24
+
 ## Study time on the board (decided 2026-11-24; built, testing on the phone)
 
 - [~] A clock under the board (bottom right, next to the player) on the analysis board and on

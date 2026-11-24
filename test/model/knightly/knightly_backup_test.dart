@@ -51,6 +51,24 @@ void main() {
     ]);
   });
 
+  test('a new install has no data: nothing to back up, a restored backup to offer', () async {
+    final container = await makeContainer();
+    final backups = container.read(knightlyBackupProvider);
+    expect(await backups.hasData(), isFalse);
+
+    final db = await container.read(knightlyDatabaseProvider.future);
+    await db.insert('xp_event', {
+      'id': 'game:abcdefgh',
+      'userId': 'testuser',
+      'source': 'game',
+      'xp': 15,
+      'createdAt': DateTime(2026, 11, 24).millisecondsSinceEpoch,
+    });
+    expect(await backups.hasData(), isTrue);
+    // With data of its own, no backup is offered to restore over it.
+    expect(await backups.backupToRestore(), isNull);
+  });
+
   test('refuses what is not a Knightly backup', () async {
     final container = await makeContainer();
     final backup = container.read(knightlyBackupProvider);

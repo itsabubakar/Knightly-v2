@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What Android's own backup saves to the user's Google account, and moves to a new phone (Android
+     12 and higher; older versions read backup_rules.xml). The preferences, without the sign in
+     (secure storage), and Knightly's daily backups (files/knightly_backups, see KnightlyBackup). -->
+<data-extraction-rules>
+  <cloud-backup>
+    <include domain="sharedpref" path="."/>
+    <exclude domain="sharedpref" path="FlutterSecureStorage"/>
+    <include domain="file" path="knightly_backups/"/>
+  </cloud-backup>
+  <device-transfer>
+    <include domain="sharedpref" path="."/>
+    <exclude domain="sharedpref" path="FlutterSecureStorage"/>
+    <include domain="file" path="knightly_backups/"/>
+  </device-transfer>
+</data-extraction-rules>
